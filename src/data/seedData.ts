@@ -39,7 +39,7 @@ export const SEED_CATEGORIES: Category[] = [
     slug: 'cables',
     description:
       'Reliable charging and data cables for everyday devices.',
-    image: `${IMAGE_BASE}?text=USB+Cables`,
+    image: `https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/e3330ad9-9364-47ae-9196-9cdd67fbdd02.png`,
     featured: true,
     productCount: 1,
   },
@@ -290,8 +290,9 @@ export const SEED_PRODUCTS: Product[] = [
     discountPercentage: 0,
 
     images: [
-      `${IMAGE_BASE}?text=USB+A+to+USB+C+Cable`,
-      `${IMAGE_BASE}?text=2M+USB+C+Cable`,
+      `https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/e3330ad9-9364-47ae-9196-9cdd67fbdd02.png`,
+      `https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/c212b599-f265-41d9-925c-70ed37753ed8.png`,
+      `https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/45a0755f-adbc-4e0f-9860-54debb8bc6c9.png`,
     ],
 
     sizes: ['Free Size'],
