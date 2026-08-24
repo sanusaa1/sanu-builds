@@ -1,8 +1,11 @@
+// OrderSuccessPage.tsx
+
 import React, { useEffect, useState } from 'react';
 import {
   CheckCircle,
   Truck,
   ShoppingBag,
+  IndianRupee,
 } from 'lucide-react';
 
 import { Order } from '../types';
@@ -17,9 +20,21 @@ interface OrderSuccessPageProps {
   ) => void;
 }
 
-export const OrderSuccessPage: React.FC<
-  OrderSuccessPageProps
-> = ({ orderId, onNavigate }) => {
+const formatINR = (amount: number): string => {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 2,
+  })
+    .format(Number(amount) || 0)
+    .replace('₹', '')
+    .trim();
+};
+
+export const OrderSuccessPage: React.FC<OrderSuccessPageProps> = ({
+  orderId,
+  onNavigate,
+}) => {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -43,10 +58,7 @@ export const OrderSuccessPage: React.FC<
 
         setOrder(result);
       } catch (error) {
-        console.error(
-          'Error loading order:',
-          error
-        );
+        console.error('Error loading order:', error);
 
         if (mounted) {
           setOrder(null);
@@ -141,10 +153,7 @@ export const OrderSuccessPage: React.FC<
           We've received your order and our workshop is
           preparing your heavyweight tees for dispatch.
           A confirmation has been sent to{' '}
-          <strong>
-            {order.customerEmail}
-          </strong>
-          .
+          <strong>{order.customerEmail}</strong>.
         </p>
 
         <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
@@ -204,20 +213,17 @@ export const OrderSuccessPage: React.FC<
 
           {order.shippingAddress.landmark && (
             <p className="text-xs text-neutral-500">
-              Landmark:{' '}
-              {order.shippingAddress.landmark}
+              Landmark: {order.shippingAddress.landmark}
             </p>
           )}
 
           <p className="text-xs text-neutral-500 font-mono">
-            Contact:{' '}
-            {order.shippingAddress.phone}
+            Contact: {order.shippingAddress.phone}
           </p>
 
           <p className="text-[11px] text-neutral-400">
             Carrier:{' '}
-            {order.carrierName ||
-              'Standard Ground'}
+            {order.carrierName || 'Standard Ground'}
           </p>
 
           {order.estimatedDelivery && (
@@ -238,15 +244,17 @@ export const OrderSuccessPage: React.FC<
 
           <div className="space-y-1.5 text-xs text-neutral-600">
 
-            <div className="flex justify-between">
+            <div className="flex justify-between items-center">
               <span>Subtotal</span>
-              <span className="font-semibold text-neutral-900">
-                ${subtotal.toFixed(2)}
+
+              <span className="font-semibold text-neutral-900 inline-flex items-center">
+                <IndianRupee className="w-3 h-3" />
+                {formatINR(subtotal)}
               </span>
             </div>
 
             {discount > 0 && (
-              <div className="flex justify-between text-emerald-600">
+              <div className="flex justify-between items-center text-emerald-600">
                 <span>
                   Discount
                   {order.couponCode
@@ -254,27 +262,35 @@ export const OrderSuccessPage: React.FC<
                     : ''}
                 </span>
 
-                <span>
-                  -${discount.toFixed(2)}
+                <span className="inline-flex items-center">
+                  -
+                  <IndianRupee className="w-3 h-3" />
+                  {formatINR(discount)}
                 </span>
               </div>
             )}
 
-            <div className="flex justify-between">
+            <div className="flex justify-between items-center">
               <span>Shipping</span>
 
               <span className="font-semibold text-neutral-900">
-                {shippingFee === 0
-                  ? 'FREE'
-                  : `$${shippingFee.toFixed(2)}`}
+                {shippingFee === 0 ? (
+                  'FREE'
+                ) : (
+                  <span className="inline-flex items-center">
+                    <IndianRupee className="w-3 h-3" />
+                    {formatINR(shippingFee)}
+                  </span>
+                )}
               </span>
             </div>
 
-            <div className="flex justify-between">
+            <div className="flex justify-between items-center">
               <span>Estimated Tax</span>
 
-              <span className="font-semibold text-neutral-900">
-                ${tax.toFixed(2)}
+              <span className="font-semibold text-neutral-900 inline-flex items-center">
+                <IndianRupee className="w-3 h-3" />
+                {formatINR(tax)}
               </span>
             </div>
 
@@ -282,7 +298,7 @@ export const OrderSuccessPage: React.FC<
               <span>Payment Method</span>
 
               <span className="font-semibold text-neutral-900 uppercase">
-                {order.paymentMethod || 'Card'}
+                {order.paymentMethod || 'UPI'}
               </span>
             </div>
 
@@ -307,8 +323,9 @@ export const OrderSuccessPage: React.FC<
                   : 'Total Due'}
               </span>
 
-              <span>
-                ${total.toFixed(2)}
+              <span className="inline-flex items-center">
+                <IndianRupee className="w-4 h-4" />
+                {formatINR(total)}
               </span>
             </div>
 
@@ -362,8 +379,9 @@ export const OrderSuccessPage: React.FC<
 
                 </div>
 
-                <span className="font-bold text-neutral-950 shrink-0">
-                  ${(price * quantity).toFixed(2)}
+                <span className="font-bold text-neutral-950 shrink-0 inline-flex items-center">
+                  <IndianRupee className="w-3.5 h-3.5" />
+                  {formatINR(price * quantity)}
                 </span>
 
               </div>
