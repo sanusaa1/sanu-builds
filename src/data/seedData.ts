@@ -9,7 +9,7 @@ export const SEED_CATEGORIES: Category[] = [
     slug: 'tshirts',
     description:
       'Everyday Sanu Builds T-shirts with clean fits and comfortable fabrics.',
-    image: `${IMAGE_BASE}?text=Sanu+Builds+T-Shirts`,
+    image: `https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/fa0a199a-b8f2-4c52-9dfc-20ff7679a889.jpg``,
     featured: true,
     productCount: 2,
   },
@@ -19,7 +19,7 @@ export const SEED_CATEGORIES: Category[] = [
     slug: 'polo-tshirts',
     description:
       'Premium solid polo T-shirts for a clean and classic look.',
-    image: `${IMAGE_BASE}?text=Sanu+Builds+Polo`,
+    image: `https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/7d042764-0cce-4484-99f8-cb7f0386cf73.jpg`,
     featured: true,
     productCount: 1,
   },
