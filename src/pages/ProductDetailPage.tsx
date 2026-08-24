@@ -45,6 +45,21 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
   /*
    * ---------------------------------------------------------
+   * INDIAN CURRENCY FORMAT
+   * ---------------------------------------------------------
+   */
+
+  const formatPrice = (value: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
+  };
+
+  /*
+   * ---------------------------------------------------------
    * SAFE PRODUCT DATA
    * ---------------------------------------------------------
    */
@@ -87,10 +102,6 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
    * ---------------------------------------------------------
    * PRODUCT CHANGE HANDLING
    * ---------------------------------------------------------
-   *
-   * If user moves from Product A to Product B without the
-   * entire page being destroyed, selected size/color should
-   * always become valid for Product B.
    */
 
   useEffect(() => {
@@ -152,30 +163,23 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
    * ---------------------------------------------------------
    * STOCK LOGIC
    * ---------------------------------------------------------
-   *
-   * Priority:
-   *
-   * 1. Matching variant stock
-   * 2. Product stock
-   * 3. Zero
-   *
-   * We do NOT use arbitrary fake stock such as 15.
    */
 
   const maxStock = useMemo(() => {
     if (currentVariant) {
-      return Math.max(0, Number(currentVariant.stock || 0));
+      return Math.max(
+        0,
+        Number(currentVariant.stock || 0)
+      );
     }
 
-    return Math.max(0, Number(product.stock || 0));
+    return Math.max(
+      0,
+      Number(product.stock || 0)
+    );
   }, [currentVariant, product.stock]);
 
   const isOutOfStock = maxStock <= 0;
-
-  /*
-   * If selected quantity somehow becomes greater than
-   * Firebase stock, automatically correct it.
-   */
 
   useEffect(() => {
     setQuantity((currentQuantity) => {
@@ -217,12 +221,6 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
    * ---------------------------------------------------------
    * RATING
    * ---------------------------------------------------------
-   *
-   * Don't use:
-   *
-   * product.rating || 4.9
-   *
-   * because a valid 0 rating would become 4.9.
    */
 
   const rating = Math.min(
@@ -244,7 +242,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   const details = product.details || {};
 
   const fabric =
-    details.fabric || 'Fabric details not provided';
+    details.fabric ||
+    'Fabric details not provided';
 
   const gsm =
     details.gsm !== undefined &&
@@ -254,22 +253,24 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
       : null;
 
   const fit =
-    details.fit || 'Fit details not provided';
+    details.fit ||
+    'Fit details not provided';
 
   const collar =
-    details.collar || 'Collar details not provided';
+    details.collar ||
+    'Collar details not provided';
 
   const modelDetails =
     details.modelDetails || '';
 
   const washCare =
-    details.washCare || 'Wash-care information not provided';
+    details.washCare ||
+    'Wash-care information not provided';
 
   /*
-   * Optional dynamic product-level content.
-   *
-   * These fields can be added to your Product details in
-   * Firestore without breaking old products.
+   * ---------------------------------------------------------
+   * SHIPPING / RETURNS
+   * ---------------------------------------------------------
    */
 
   const shippingText =
@@ -295,14 +296,6 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
    * ---------------------------------------------------------
    * RELATED PRODUCTS
    * ---------------------------------------------------------
-   *
-   * Priority:
-   *
-   * 1. Same category
-   * 2. Same brand
-   * 3. Same tags
-   *
-   * Current product excluded.
    */
 
   const relatedProducts = useMemo(() => {
@@ -380,12 +373,6 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   const handleColorChange = (color: string) => {
     setSelectedColor(color);
 
-    /*
-     * When changing color, check whether current size exists
-     * for that color. If not, automatically choose the first
-     * available size for that color.
-     */
-
     const matchingSizes = sizes.filter((size) => {
       const variant = variants.find(
         (item) =>
@@ -393,7 +380,10 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
           item.color === color
       );
 
-      return !variant || Number(variant.stock || 0) > 0;
+      return (
+        !variant ||
+        Number(variant.stock || 0) > 0
+      );
     });
 
     if (
@@ -426,7 +416,10 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     }
 
     setQuantity((currentQuantity) =>
-      Math.min(maxStock, currentQuantity + 1)
+      Math.min(
+        maxStock,
+        currentQuantity + 1
+      )
     );
   };
 
@@ -504,7 +497,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
    * ---------------------------------------------------------
    */
 
-  const toggleAccordion = (key: AccordionKey) => {
+  const toggleAccordion = (
+    key: AccordionKey
+  ) => {
     setOpenAccordion((current) =>
       current === key ? '' : key
     );
@@ -530,21 +525,21 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     );
   };
 
-  const isSizeOutOfStock = (size: string) => {
+  const isSizeOutOfStock = (
+    size: string
+  ) => {
     const variant = getSizeVariant(size);
 
-    /*
-     * If variants exist, matching variant controls stock.
-     *
-     * If no matching variant exists, fallback to product-level
-     * stock so older products remain compatible.
-     */
-
     if (variants.length > 0) {
-      return !variant || Number(variant.stock || 0) <= 0;
+      return (
+        !variant ||
+        Number(variant.stock || 0) <= 0
+      );
     }
 
-    return Number(product.stock || 0) <= 0;
+    return (
+      Number(product.stock || 0) <= 0
+    );
   };
 
   /*
@@ -554,24 +549,27 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
    */
 
   const renderRatingStars = () => {
-    return [1, 2, 3, 4, 5].map((starNumber) => {
-      const filled = rating >= starNumber;
+    return [1, 2, 3, 4, 5].map(
+      (starNumber) => {
+        const filled =
+          rating >= starNumber;
 
-      const partiallyFilled =
-        rating >= starNumber - 0.5 &&
-        rating < starNumber;
+        const partiallyFilled =
+          rating >= starNumber - 0.5 &&
+          rating < starNumber;
 
-      return (
-        <Star
-          key={starNumber}
-          className={`w-4 h-4 ${
-            filled || partiallyFilled
-              ? 'fill-amber-400 text-amber-400'
-              : 'text-neutral-300'
-          }`}
-        />
-      );
-    });
+        return (
+          <Star
+            key={starNumber}
+            className={`w-4 h-4 ${
+              filled || partiallyFilled
+                ? 'fill-amber-400 text-amber-400'
+                : 'text-neutral-300'
+            }`}
+          />
+        );
+      }
+    );
   };
 
   /*
@@ -673,16 +671,20 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               </div>
 
               <span className="text-xs font-bold text-neutral-900">
-                {rating > 0 ? rating.toFixed(1) : 'No rating'}
+                {rating > 0
+                  ? rating.toFixed(1)
+                  : 'No rating'}
               </span>
 
               <span className="text-xs text-neutral-400">
                 (
-                {reviewCount}
-                {' '}
-                {reviewCount === 1 ? 'review' : 'reviews'}
+                {reviewCount}{' '}
+                {reviewCount === 1
+                  ? 'review'
+                  : 'reviews'}
                 )
               </span>
+
             </div>
           </div>
 
@@ -693,13 +695,13 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
           <div className="flex items-baseline gap-3 pb-4 border-b border-neutral-100">
 
             <span className="text-2xl sm:text-3xl font-black text-neutral-900">
-              ${price.toFixed(2)}
+              {formatPrice(price)}
             </span>
 
             {compareAtPrice > price && (
               <>
                 <span className="text-base text-neutral-400 line-through">
-                  ${compareAtPrice.toFixed(2)}
+                  {formatPrice(compareAtPrice)}
                 </span>
 
                 {discountPercentage > 0 && (
@@ -709,6 +711,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 )}
               </>
             )}
+
           </div>
 
           {/* =================================================
@@ -723,7 +726,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 <span className="text-xs font-bold uppercase tracking-wider text-neutral-800">
                   Color:{' '}
                   <span className="text-neutral-900 font-black">
-                    {selectedColor || 'Select color'}
+                    {selectedColor ||
+                      'Select color'}
                   </span>
                 </span>
 
@@ -736,24 +740,29 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                     key={color.name}
                     type="button"
                     onClick={() =>
-                      handleColorChange(color.name)
+                      handleColorChange(
+                        color.name
+                      )
                     }
                     className={`relative p-1 rounded-full border transition-all ${
-                      selectedColor === color.name
+                      selectedColor ===
+                      color.name
                         ? 'border-neutral-950 ring-2 ring-neutral-950'
                         : 'border-neutral-300 hover:border-neutral-700'
                     }`}
                     title={color.name}
                     aria-label={`Select ${color.name}`}
                     aria-pressed={
-                      selectedColor === color.name
+                      selectedColor ===
+                      color.name
                     }
                   >
                     <span
                       className="block w-6 h-6 rounded-full border border-neutral-200"
                       style={{
                         backgroundColor:
-                          color.hex || '#000000',
+                          color.hex ||
+                          '#000000',
                       }}
                     />
                   </button>
@@ -775,7 +784,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 <span className="text-xs font-bold uppercase tracking-wider text-neutral-800">
                   Size:{' '}
                   <span className="text-neutral-900 font-black">
-                    {selectedSize || 'Select size'}
+                    {selectedSize ||
+                      'Select size'}
                   </span>
                 </span>
 
@@ -787,7 +797,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                   className="text-xs font-semibold text-neutral-600 hover:text-neutral-950 flex items-center gap-1 underline"
                 >
                   <Ruler className="w-3.5 h-3.5" />
-                  <span>Size Guide</span>
+                  <span>
+                    Size Guide
+                  </span>
                 </button>
 
               </div>
@@ -796,15 +808,21 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 className={`grid gap-2 ${
                   sizes.length >= 5
                     ? 'grid-cols-5'
-                    : `grid-cols-${Math.min(
-                        sizes.length,
-                        4
-                      )}`
+                    : sizes.length === 4
+                    ? 'grid-cols-4'
+                    : sizes.length === 3
+                    ? 'grid-cols-3'
+                    : sizes.length === 2
+                    ? 'grid-cols-2'
+                    : 'grid-cols-1'
                 }`}
               >
+
                 {sizes.map((size) => {
                   const isOOS =
-                    isSizeOutOfStock(size);
+                    isSizeOutOfStock(
+                      size
+                    );
 
                   return (
                     <button
@@ -812,7 +830,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                       type="button"
                       disabled={isOOS}
                       onClick={() =>
-                        handleSizeChange(size)
+                        handleSizeChange(
+                          size
+                        )
                       }
                       className={`py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg border transition-all ${
                         selectedSize === size
@@ -830,6 +850,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                     </button>
                   );
                 })}
+
               </div>
 
               {/* INVENTORY STATUS */}
@@ -839,19 +860,23 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 {isOutOfStock ? (
                   <span className="text-rose-600 font-bold">
                     Out of stock in{' '}
-                    {selectedSize || 'selected size'}
+                    {selectedSize ||
+                      'selected size'}
                     {' / '}
-                    {selectedColor || 'selected color'}
+                    {selectedColor ||
+                      'selected color'}
                   </span>
                 ) : maxStock < 10 ? (
                   <span className="text-amber-600 font-bold">
-                    Only {maxStock} left in stock —
+                    Only {maxStock}{' '}
+                    left in stock —
                     order soon
                   </span>
                 ) : (
                   <span className="text-emerald-700 font-medium flex items-center gap-1">
                     <Check className="w-3.5 h-3.5" />
-                    In stock and ready to dispatch
+                    In stock and ready
+                    to dispatch
                   </span>
                 )}
 
@@ -893,7 +918,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 <button
                   type="button"
                   disabled={
-                    quantity >= maxStock ||
+                    quantity >=
+                      maxStock ||
                     isOutOfStock
                   }
                   onClick={
@@ -913,7 +939,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 id="add-to-cart-btn"
                 type="button"
                 disabled={isOutOfStock}
-                onClick={handleAddToCart}
+                onClick={
+                  handleAddToCart
+                }
                 className="flex-1 py-3.5 bg-neutral-950 hover:bg-neutral-800 disabled:bg-neutral-300 text-white text-xs font-bold uppercase tracking-wider rounded-lg transition-all shadow-md flex items-center justify-center gap-2"
               >
                 <ShoppingBag className="w-4 h-4" />
@@ -930,7 +958,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               <button
                 id="pdp-wishlist-btn"
                 type="button"
-                onClick={handleWishlist}
+                onClick={
+                  handleWishlist
+                }
                 className={`p-3.5 border rounded-lg transition-colors shrink-0 ${
                   isSaved
                     ? 'bg-neutral-950 text-white border-neutral-950'
@@ -945,7 +975,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               >
                 <Heart
                   className={`w-4 h-4 ${
-                    isSaved ? 'fill-white' : ''
+                    isSaved
+                      ? 'fill-white'
+                      : ''
                   }`}
                 />
               </button>
@@ -958,7 +990,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               id="buy-now-btn"
               type="button"
               disabled={isOutOfStock}
-              onClick={handleBuyNow}
+              onClick={
+                handleBuyNow
+              }
               className="w-full py-3 bg-white hover:bg-neutral-100 disabled:bg-neutral-100 disabled:text-neutral-400 text-neutral-950 border border-neutral-900 disabled:border-neutral-300 text-xs font-black uppercase tracking-wider rounded-lg transition-colors flex items-center justify-center gap-2"
             >
               <Zap className="w-4 h-4" />
@@ -1025,11 +1059,14 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               <button
                 type="button"
                 onClick={() =>
-                  toggleAccordion('specs')
+                  toggleAccordion(
+                    'specs'
+                  )
                 }
                 className="w-full py-3.5 flex items-center justify-between text-xs font-bold uppercase tracking-wider text-neutral-900"
                 aria-expanded={
-                  openAccordion === 'specs'
+                  openAccordion ===
+                  'specs'
                 }
               >
                 <span>
@@ -1037,18 +1074,22 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                     'Fabric & Engineering Details'}
                 </span>
 
-                {openAccordion === 'specs' ? (
+                {openAccordion ===
+                'specs' ? (
                   <ChevronUp className="w-4 h-4" />
                 ) : (
                   <ChevronDown className="w-4 h-4" />
                 )}
               </button>
 
-              {openAccordion === 'specs' && (
+              {openAccordion ===
+                'specs' && (
                 <div className="pb-4 text-xs text-neutral-600 space-y-2 leading-relaxed animate-in fade-in duration-150">
 
                   {product.description && (
-                    <p>{product.description}</p>
+                    <p>
+                      {product.description}
+                    </p>
                   )}
 
                   <ul className="list-disc pl-4 space-y-1 text-neutral-700">
@@ -1092,11 +1133,14 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               <button
                 type="button"
                 onClick={() =>
-                  toggleAccordion('wash')
+                  toggleAccordion(
+                    'wash'
+                  )
                 }
                 className="w-full py-3.5 flex items-center justify-between text-xs font-bold uppercase tracking-wider text-neutral-900"
                 aria-expanded={
-                  openAccordion === 'wash'
+                  openAccordion ===
+                  'wash'
                 }
               >
                 <span>
@@ -1104,24 +1148,31 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                     'Wash & Garment Care'}
                 </span>
 
-                {openAccordion === 'wash' ? (
+                {openAccordion ===
+                'wash' ? (
                   <ChevronUp className="w-4 h-4" />
                 ) : (
                   <ChevronDown className="w-4 h-4" />
                 )}
               </button>
 
-              {openAccordion === 'wash' && (
+              {openAccordion ===
+                'wash' && (
                 <div className="pb-4 text-xs text-neutral-600 space-y-1.5 leading-relaxed animate-in fade-in duration-150">
 
-                  {Array.isArray(washCare) ? (
+                  {Array.isArray(
+                    washCare
+                  ) ? (
                     washCare.map(
                       (
                         instruction: string,
                         index: number
                       ) => (
-                        <p key={index}>
-                          • {instruction}
+                        <p
+                          key={index}
+                        >
+                          •{' '}
+                          {instruction}
                         </p>
                       )
                     )
@@ -1141,11 +1192,14 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               <button
                 type="button"
                 onClick={() =>
-                  toggleAccordion('shipping')
+                  toggleAccordion(
+                    'shipping'
+                  )
                 }
                 className="w-full py-3.5 flex items-center justify-between text-xs font-bold uppercase tracking-wider text-neutral-900"
                 aria-expanded={
-                  openAccordion === 'shipping'
+                  openAccordion ===
+                  'shipping'
                 }
               >
                 <span>
@@ -1153,14 +1207,16 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                     'Shipping & Returns'}
                 </span>
 
-                {openAccordion === 'shipping' ? (
+                {openAccordion ===
+                'shipping' ? (
                   <ChevronUp className="w-4 h-4" />
                 ) : (
                   <ChevronDown className="w-4 h-4" />
                 )}
               </button>
 
-              {openAccordion === 'shipping' && (
+              {openAccordion ===
+                'shipping' && (
                 <div className="pb-4 text-xs text-neutral-600 space-y-2 leading-relaxed animate-in fade-in duration-150">
 
                   <p>
@@ -1185,7 +1241,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
       ====================================================== */}
 
       <section className="pt-8 border-t border-neutral-200">
-        <ProductReviews product={product} />
+        <ProductReviews
+          product={product}
+        />
       </section>
 
       {/* =====================================================
@@ -1203,7 +1261,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               </span>
 
               <h3 className="text-xl font-black text-neutral-900 tracking-tight">
-                Pair With These Silhouettes
+                Pair With These
+                Silhouettes
               </h3>
             </div>
 
@@ -1211,13 +1270,21 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
 
-            {relatedProducts.map((relatedProduct) => (
-              <ProductCard
-                key={relatedProduct.id}
-                product={relatedProduct}
-                onSelect={onSelectProduct}
-              />
-            ))}
+            {relatedProducts.map(
+              (relatedProduct) => (
+                <ProductCard
+                  key={
+                    relatedProduct.id
+                  }
+                  product={
+                    relatedProduct
+                  }
+                  onSelect={
+                    onSelectProduct
+                  }
+                />
+              )
+            )}
 
           </div>
         </section>
@@ -1228,7 +1295,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
       ====================================================== */}
 
       <SizeGuideModal
-        isOpen={isSizeGuideOpen}
+        isOpen={
+          isSizeGuideOpen
+        }
         onClose={() =>
           setIsSizeGuideOpen(false)
         }
