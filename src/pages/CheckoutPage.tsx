@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ShieldCheck,
   Truck,
@@ -19,12 +19,48 @@ import {
 import { createOrder } from '../services/orderService';
 
 interface CheckoutPageProps {
-  onNavigate: (route: string, params?: Record<string, string>) => void;
+  onNavigate: (
+    route: string,
+    params?: Record<string, string>
+  ) => void;
 }
 
-export const CheckoutPage: React.FC<CheckoutPageProps> = ({
-  onNavigate,
-}) => {
+/**
+ * Firestore does not allow undefined values.
+ *
+ * This helper recursively removes undefined values
+ * from objects and arrays before sending data to Firestore.
+ */
+const removeUndefined = <T,>(value: T): T => {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => removeUndefined(item))
+      .filter((item) => item !== undefined) as T;
+  }
+
+  if (
+    value !== null &&
+    typeof value === 'object'
+  ) {
+    const result: Record<string, unknown> = {};
+
+    Object.entries(
+      value as Record<string, unknown>
+    ).forEach(([key, item]) => {
+      if (item !== undefined) {
+        result[key] = removeUndefined(item);
+      }
+    });
+
+    return result as T;
+  }
+
+  return value;
+};
+
+export const CheckoutPage: React.FC<
+  CheckoutPageProps
+> = ({ onNavigate }) => {
   const {
     cart,
     subtotal,
@@ -36,26 +72,55 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
     clearCart,
   } = useCart();
 
-  const { currentUser, userProfile } = useAuth();
-  const { success, error: toastError } = useToast();
+  const {
+    currentUser,
+    userProfile,
+  } = useAuth();
 
-  const [savedAddresses, setSavedAddresses] = useState<Address[]>([]);
-  const [selectedAddressId, setSelectedAddressId] = useState<string>('');
-  const [isAddingNewAddress, setIsAddingNewAddress] =
-    useState<boolean>(false);
+  const {
+    success,
+    error: toastError,
+  } = useToast();
 
-  const [deliveryMethod, setDeliveryMethod] = useState<
-    'standard' | 'express'
-  >('standard');
+  const [
+    savedAddresses,
+    setSavedAddresses,
+  ] = useState<Address[]>([]);
 
-  const [paymentMethod, setPaymentMethod] =
-    useState<PaymentMethod>('card');
+  const [
+    selectedAddressId,
+    setSelectedAddressId,
+  ] = useState<string>('');
 
-  const [placingOrder, setPlacingOrder] =
-    useState<boolean>(false);
+  const [
+    isAddingNewAddress,
+    setIsAddingNewAddress,
+  ] = useState<boolean>(false);
 
-  // Address form
-  const [addressForm, setAddressForm] = useState<Omit<Address, 'id'>>({
+  const [
+    deliveryMethod,
+    setDeliveryMethod,
+  ] = useState<'standard' | 'express'>(
+    'standard'
+  );
+
+  const [
+    paymentMethod,
+    setPaymentMethod,
+  ] = useState<PaymentMethod>('card');
+
+  const [
+    placingOrder,
+    setPlacingOrder,
+  ] = useState<boolean>(false);
+
+  /*
+   * Address form
+   */
+  const [
+    addressForm,
+    setAddressForm,
+  ] = useState<Omit<Address, 'id'>>({
     fullName: userProfile?.name || '',
     phone: userProfile?.phone || '',
     addressLine1: '',
@@ -68,21 +133,33 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
     isDefault: true,
   });
 
-  // Payment mock fields
-  const [cardNumber, setCardNumber] =
-    useState('4242 •••• •••• 4242');
+  /*
+   * Payment mock fields
+   */
+  const [
+    cardNumber,
+    setCardNumber,
+  ] = useState(
+    '4242 •••• •••• 4242'
+  );
 
-  const [cardExpiry, setCardExpiry] =
-    useState('12/28');
+  const [
+    cardExpiry,
+    setCardExpiry,
+  ] = useState('12/28');
 
-  const [cardCvc, setCardCvc] =
-    useState('888');
+  const [
+    cardCvc,
+    setCardCvc,
+  ] = useState('888');
 
-  const [upiId, setUpiId] =
-    useState('builder@okaxis');
+  const [
+    upiId,
+    setUpiId,
+  ] = useState('builder@okaxis');
 
   /*
-   * Load addresses
+   * Load saved addresses
    */
   useEffect(() => {
     if (cart.length === 0) {
@@ -90,130 +167,245 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
       return;
     }
 
-    if (currentUser) {
-      getUserAddresses(currentUser.uid)
-        .then((addrs) => {
-          setSavedAddresses(addrs);
-
-          if (addrs.length > 0) {
-            const defaultAddress =
-              addrs.find((address) => address.isDefault) ||
-              addrs[0];
-
-            setSelectedAddressId(defaultAddress.id);
-            setIsAddingNewAddress(false);
-          } else {
-            setIsAddingNewAddress(true);
-          }
-        })
-        .catch((error) => {
-          console.error(
-            'Error loading user addresses:',
-            error
-          );
-
-          toastError(
-            'Could not load saved addresses.'
-          );
-
-          setIsAddingNewAddress(true);
-        });
-    } else {
+    if (!currentUser) {
       setIsAddingNewAddress(true);
+      return;
     }
-  }, [currentUser, cart.length, onNavigate, toastError]);
+
+    let mounted = true;
+
+    const loadAddresses = async () => {
+      try {
+        const addresses =
+          await getUserAddresses(
+            currentUser.uid
+          );
+
+        if (!mounted) {
+          return;
+        }
+
+        setSavedAddresses(addresses);
+
+        if (addresses.length > 0) {
+          const defaultAddress =
+            addresses.find(
+              (address) =>
+                address.isDefault
+            ) || addresses[0];
+
+          setSelectedAddressId(
+            defaultAddress.id
+          );
+
+          setIsAddingNewAddress(false);
+        } else {
+          setSelectedAddressId('');
+          setIsAddingNewAddress(true);
+        }
+      } catch (err) {
+        console.error(
+          'Error loading user addresses:',
+          err
+        );
+
+        if (!mounted) {
+          return;
+        }
+
+        setIsAddingNewAddress(true);
+
+        toastError(
+          'Could not load saved addresses.'
+        );
+      }
+    };
+
+    loadAddresses();
+
+    return () => {
+      mounted = false;
+    };
+  }, [
+    currentUser,
+    cart.length,
+    onNavigate,
+    toastError,
+  ]);
 
   /*
-   * Keep address form synced with user profile
+   * Sync profile information into
+   * address form.
    */
   useEffect(() => {
-    if (!userProfile) return;
+    if (!userProfile) {
+      return;
+    }
 
-    setAddressForm((prev) => ({
-      ...prev,
-      fullName: prev.fullName || userProfile.name || '',
-      phone: prev.phone || userProfile.phone || '',
+    setAddressForm((previous) => ({
+      ...previous,
+
+      fullName:
+        previous.fullName ||
+        userProfile.name ||
+        '',
+
+      phone:
+        previous.phone ||
+        userProfile.phone ||
+        '',
     }));
   }, [userProfile]);
+
+  /*
+   * Validate address
+   */
+  const isAddressValid = (
+    address: Omit<Address, 'id'>
+  ) => {
+    return Boolean(
+      address.fullName?.trim() &&
+        address.phone?.trim() &&
+        address.addressLine1?.trim() &&
+        address.city?.trim() &&
+        address.state?.trim() &&
+        address.postalCode?.trim()
+    );
+  };
 
   /*
    * Save new address
    */
   const handleSaveNewAddress = async (
-    e: React.FormEvent
+    event: React.FormEvent
   ) => {
-    e.preventDefault();
+    event.preventDefault();
 
-    if (
-      !addressForm.fullName ||
-      !addressForm.phone ||
-      !addressForm.addressLine1 ||
-      !addressForm.city ||
-      !addressForm.state ||
-      !addressForm.postalCode
-    ) {
+    if (!isAddressValid(addressForm)) {
       toastError(
         'Please fill out all required address fields.'
       );
       return;
     }
 
-    if (currentUser) {
-      try {
-        const saved = await saveUserAddress(
-          currentUser.uid,
-          addressForm
-        );
+    if (!currentUser) {
+      setSelectedAddressId(
+        'guest_temp'
+      );
 
-        setSavedAddresses((prev) => [
-          ...prev,
-          saved,
-        ]);
-
-        setSelectedAddressId(saved.id);
-        setIsAddingNewAddress(false);
-
-        success('Address saved successfully.');
-      } catch (error) {
-        console.error(
-          'Error saving address:',
-          error
-        );
-
-        toastError(
-          'Could not save address. Please try again.'
-        );
-      }
-    } else {
-      // Guest address
-      setSelectedAddressId('guest_temp');
       setIsAddingNewAddress(false);
 
-      success('Delivery address selected.');
+      success(
+        'Delivery address selected.'
+      );
+
+      return;
     }
+
+    try {
+      const safeAddress =
+        removeUndefined({
+          ...addressForm,
+
+          fullName:
+            addressForm.fullName.trim(),
+
+          phone:
+            addressForm.phone.trim(),
+
+          addressLine1:
+            addressForm.addressLine1.trim(),
+
+          addressLine2:
+            addressForm.addressLine2?.trim() ||
+            null,
+
+          city:
+            addressForm.city.trim(),
+
+          state:
+            addressForm.state.trim(),
+
+          postalCode:
+            addressForm.postalCode.trim(),
+
+          country:
+            addressForm.country?.trim() ||
+            'United States',
+
+          landmark:
+            addressForm.landmark?.trim() ||
+            null,
+
+          isDefault:
+            Boolean(addressForm.isDefault),
+        });
+
+      const saved =
+        await saveUserAddress(
+          currentUser.uid,
+          safeAddress
+        );
+
+      setSavedAddresses(
+        (previous) => [
+          ...previous,
+          saved,
+        ]
+      );
+
+      setSelectedAddressId(saved.id);
+
+      setIsAddingNewAddress(false);
+
+      success(
+        'Address saved successfully.'
+      );
+    } catch (err) {
+      console.error(
+        'Error saving address:',
+        err
+      );
+
+      toastError(
+        'Could not save address. Please try again.'
+      );
+    }
+  };
+
+  /*
+   * Select saved address
+   */
+  const handleSelectAddress = (
+    addressId: string
+  ) => {
+    setSelectedAddressId(addressId);
+    setIsAddingNewAddress(false);
   };
 
   /*
    * Place order
    */
   const handlePlaceOrder = async () => {
+    if (placingOrder) {
+      return;
+    }
+
     /*
-     * Validate delivery address
+     * -----------------------------------------
+     * STEP 1: Resolve active address
+     * -----------------------------------------
      */
     let activeAddress: Address;
 
     if (
       isAddingNewAddress ||
-      selectedAddressId === 'guest_temp' ||
+      selectedAddressId ===
+        'guest_temp' ||
       savedAddresses.length === 0
     ) {
       if (
-        !addressForm.fullName ||
-        !addressForm.phone ||
-        !addressForm.addressLine1 ||
-        !addressForm.city ||
-        !addressForm.state ||
-        !addressForm.postalCode
+        !isAddressValid(addressForm)
       ) {
         toastError(
           'Please provide a complete delivery address.'
@@ -221,15 +413,52 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
         return;
       }
 
-      activeAddress = {
-        ...addressForm,
-        id: `addr_temp_${Date.now()}`,
-      };
+      activeAddress =
+        removeUndefined({
+          ...addressForm,
+
+          id: `addr_temp_${Date.now()}`,
+
+          fullName:
+            addressForm.fullName.trim(),
+
+          phone:
+            addressForm.phone.trim(),
+
+          addressLine1:
+            addressForm.addressLine1.trim(),
+
+          addressLine2:
+            addressForm.addressLine2?.trim() ||
+            null,
+
+          city:
+            addressForm.city.trim(),
+
+          state:
+            addressForm.state.trim(),
+
+          postalCode:
+            addressForm.postalCode.trim(),
+
+          country:
+            addressForm.country?.trim() ||
+            'United States',
+
+          landmark:
+            addressForm.landmark?.trim() ||
+            null,
+
+          isDefault:
+            Boolean(addressForm.isDefault),
+        });
     } else {
-      const foundAddress = savedAddresses.find(
-        (address) =>
-          address.id === selectedAddressId
-      );
+      const foundAddress =
+        savedAddresses.find(
+          (address) =>
+            address.id ===
+            selectedAddressId
+        );
 
       if (!foundAddress) {
         toastError(
@@ -238,122 +467,201 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
         return;
       }
 
-      activeAddress = foundAddress;
+      activeAddress =
+        removeUndefined(
+          foundAddress
+        );
     }
 
     /*
-     * Prevent duplicate clicks
+     * -----------------------------------------
+     * STEP 2: Calculate shipping
+     * -----------------------------------------
      */
-    if (placingOrder) {
-      return;
-    }
+    const baseShipping =
+      Number(shippingFee) || 0;
+
+    const finalShipping =
+      deliveryMethod === 'express'
+        ? baseShipping + 8
+        : baseShipping;
+
+    /*
+     * -----------------------------------------
+     * STEP 3: Calculate totals
+     * -----------------------------------------
+     */
+    const safeSubtotal =
+      Number(subtotal) || 0;
+
+    const safeDiscount =
+      Number(discount) || 0;
+
+    const safeTax =
+      Number(tax) || 0;
+
+    const finalTotal =
+      Math.round(
+        (
+          safeSubtotal -
+          safeDiscount +
+          finalShipping +
+          safeTax
+        ) * 100
+      ) / 100;
+
+    /*
+     * -----------------------------------------
+     * STEP 4: Coupon
+     *
+     * NEVER send undefined to Firestore.
+     * -----------------------------------------
+     */
+    const couponCode =
+      appliedCoupon?.code?.trim() ||
+      null;
+
+    /*
+     * -----------------------------------------
+     * STEP 5: Clean cart items
+     *
+     * This protects against undefined
+     * fields inside cart objects too.
+     * -----------------------------------------
+     */
+    const safeItems = cart.map(
+      (item) =>
+        removeUndefined({
+          ...item,
+
+          quantity:
+            Number(item.quantity) || 1,
+
+          price:
+            Number(item.price) || 0,
+
+          name:
+            item.name || '',
+
+          image:
+            item.image || '',
+
+          size:
+            item.size || null,
+        })
+    );
+
+    /*
+     * -----------------------------------------
+     * STEP 6: Create Firestore-safe order
+     * -----------------------------------------
+     */
+    const orderData = removeUndefined({
+      userId:
+        currentUser?.uid || 'guest',
+
+      customerName:
+        activeAddress.fullName || '',
+
+      customerEmail:
+        currentUser?.email ||
+        'guest@sanubuilds.com',
+
+      customerPhone:
+        activeAddress.phone || '',
+
+      items: safeItems,
+
+      shippingAddress:
+        activeAddress,
+
+      subtotal:
+        safeSubtotal,
+
+      discount:
+        safeDiscount,
+
+      /*
+       * IMPORTANT:
+       * null is allowed by Firestore.
+       * undefined is NOT allowed.
+       */
+      couponCode:
+        couponCode,
+
+      shippingFee:
+        finalShipping,
+
+      tax:
+        safeTax,
+
+      total:
+        finalTotal,
+
+      paymentMethod:
+        paymentMethod || 'card',
+
+      paymentStatus:
+        paymentMethod === 'cod'
+          ? 'pending'
+          : 'paid',
+
+      orderStatus:
+        'confirmed',
+
+      carrierName:
+        deliveryMethod === 'express'
+          ? 'FedEx Priority Air'
+          : 'Expedited Standard Ground',
+
+      estimatedDelivery:
+        deliveryMethod === 'express'
+          ? '1 - 2 Business Days'
+          : '3 - 5 Business Days',
+
+      deliveryMethod:
+        deliveryMethod,
+
+      createdAt:
+        new Date().toISOString(),
+    });
+
+    /*
+     * Debug:
+     * Check if anything undefined
+     * somehow remains.
+     */
+    console.log(
+      'Creating Firestore order:',
+      orderData
+    );
 
     setPlacingOrder(true);
 
     try {
       /*
-       * Calculate shipping
-       */
-      const finalShipping =
-        deliveryMethod === 'express'
-          ? shippingFee + 8
-          : shippingFee;
-
-      /*
-       * Calculate final order total
-       */
-      const finalTotal =
-        Math.round(
-          (
-            subtotal -
-            discount +
-            finalShipping +
-            tax
-          ) * 100
-        ) / 100;
-
-      /*
-       * IMPORTANT:
-       *
-       * Firestore does NOT accept undefined.
-       *
-       * So couponCode uses null when there
-       * is no coupon.
-       */
-      const couponCode =
-        appliedCoupon?.code ?? null;
-
-      /*
-       * Make sure all order fields have valid values.
-       */
-      const orderData = {
-        userId: currentUser?.uid || 'guest',
-
-        customerName:
-          activeAddress.fullName,
-
-        customerEmail:
-          currentUser?.email ||
-          'guest@sanubuilds.com',
-
-        customerPhone:
-          activeAddress.phone,
-
-        items: cart,
-
-        shippingAddress: activeAddress,
-
-        subtotal: Number(subtotal) || 0,
-
-        discount: Number(discount) || 0,
-
-        couponCode,
-
-        shippingFee:
-          Number(finalShipping) || 0,
-
-        tax: Number(tax) || 0,
-
-        total:
-          Number(finalTotal) || 0,
-
-        paymentMethod,
-
-        paymentStatus:
-          paymentMethod === 'cod'
-            ? 'pending'
-            : 'paid',
-
-        orderStatus: 'confirmed',
-
-        carrierName:
-          deliveryMethod === 'express'
-            ? 'FedEx Priority Air'
-            : 'Expedited Standard Ground',
-
-        estimatedDelivery:
-          deliveryMethod === 'express'
-            ? '1 - 2 Business Days'
-            : '3 - 5 Business Days',
-      };
-
-      console.log(
-        'Creating order:',
-        orderData
-      );
-
-      /*
-       * Create Firestore order
+       * -----------------------------------------
+       * STEP 7: Create order
+       * -----------------------------------------
        */
       const orderResult =
-        await createOrder(orderData);
+        await createOrder(
+          orderData
+        );
 
       /*
-       * Clear cart only after successful
-       * Firestore order creation.
+       * -----------------------------------------
+       * STEP 8: Clear cart ONLY after
+       * successful order creation
+       * -----------------------------------------
        */
       await clearCart();
 
+      /*
+       * -----------------------------------------
+       * STEP 9: Success
+       * -----------------------------------------
+       */
       success(
         `Order #${orderResult.orderNumber} placed successfully!`
       );
@@ -361,10 +669,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
       onNavigate(
         `/order-success/${orderResult.id}`
       );
-    } catch (error) {
+    } catch (err) {
       console.error(
         'Error placing order:',
-        error
+        err
       );
 
       toastError(
@@ -376,12 +684,12 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
   };
 
   /*
-   * Express shipping total
+   * Express shipping display
    */
   const displayTotal =
     deliveryMethod === 'express'
-      ? total + 8
-      : total;
+      ? Number(total || 0) + 8
+      : Number(total || 0);
 
   /*
    * Empty cart protection
@@ -393,8 +701,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 
-      {/* Checkout Header */}
+      {/* HEADER */}
       <div className="border-b border-neutral-200 pb-4 flex items-center justify-between">
+
         <div>
           <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">
             Secure 256-Bit SSL Checkout
@@ -407,16 +716,19 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
 
         <div className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200 text-xs font-bold">
           <Lock className="w-3.5 h-3.5" />
-          <span>Encrypted Payment</span>
+          <span>
+            Encrypted Payment
+          </span>
         </div>
+
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
-        {/* LEFT COLUMN */}
+        {/* LEFT */}
         <div className="lg:col-span-8 space-y-8">
 
-          {/* STEP 1 - ADDRESS */}
+          {/* ADDRESS */}
           <div className="bg-white rounded-xl border border-neutral-200 p-6 space-y-5 shadow-xs">
 
             <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
@@ -438,12 +750,16 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                   <button
                     type="button"
                     onClick={() =>
-                      setIsAddingNewAddress(true)
+                      setIsAddingNewAddress(
+                        true
+                      )
                     }
                     className="text-xs font-bold text-neutral-900 hover:underline flex items-center gap-1"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>Add New Address</span>
+                    <span>
+                      Add New Address
+                    </span>
                   </button>
                 )}
 
@@ -455,63 +771,72 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 
-                {savedAddresses.map((addr) => (
+                {savedAddresses.map(
+                  (address) => (
 
-                  <div
-                    key={addr.id}
-                    onClick={() =>
-                      setSelectedAddressId(addr.id)
-                    }
-                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all space-y-1 ${
-                      selectedAddressId === addr.id
-                        ? 'border-neutral-950 bg-neutral-50/70 shadow-xs'
-                        : 'border-neutral-200 hover:border-neutral-400'
-                    }`}
-                  >
+                    <button
+                      type="button"
+                      key={address.id}
+                      onClick={() =>
+                        handleSelectAddress(
+                          address.id
+                        )
+                      }
+                      className={`text-left p-4 rounded-xl border-2 cursor-pointer transition-all space-y-1 ${
+                        selectedAddressId ===
+                        address.id
+                          ? 'border-neutral-950 bg-neutral-50/70 shadow-xs'
+                          : 'border-neutral-200 hover:border-neutral-400'
+                      }`}
+                    >
 
-                    <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between">
 
-                      <span className="text-xs font-bold text-neutral-900">
-                        {addr.fullName}
-                      </span>
-
-                      {addr.isDefault && (
-                        <span className="text-[10px] font-bold uppercase bg-neutral-200 px-1.5 py-0.5 rounded text-neutral-800">
-                          Default
+                        <span className="text-xs font-bold text-neutral-900">
+                          {address.fullName}
                         </span>
-                      )}
 
-                    </div>
+                        {address.isDefault && (
+                          <span className="text-[10px] font-bold uppercase bg-neutral-200 px-1.5 py-0.5 rounded text-neutral-800">
+                            Default
+                          </span>
+                        )}
 
-                    <p className="text-xs text-neutral-600 leading-relaxed">
-                      {addr.addressLine1}
+                      </div>
 
-                      {addr.addressLine2
-                        ? `, ${addr.addressLine2}`
-                        : ''}
-                    </p>
+                      <p className="text-xs text-neutral-600 leading-relaxed">
+                        {address.addressLine1}
 
-                    <p className="text-xs text-neutral-600">
-                      {addr.city}, {addr.state}{' '}
-                      {addr.postalCode}
-                    </p>
+                        {address.addressLine2
+                          ? `, ${address.addressLine2}`
+                          : ''}
+                      </p>
 
-                    <p className="text-xs text-neutral-500 font-mono">
-                      Phone: {addr.phone}
-                    </p>
+                      <p className="text-xs text-neutral-600">
+                        {address.city},{' '}
+                        {address.state}{' '}
+                        {address.postalCode}
+                      </p>
 
-                  </div>
+                      <p className="text-xs text-neutral-500 font-mono">
+                        Phone:{' '}
+                        {address.phone}
+                      </p>
 
-                ))}
+                    </button>
+
+                  )
+                )}
 
               </div>
 
             ) : (
 
               /* NEW ADDRESS FORM */
-
               <form
-                onSubmit={handleSaveNewAddress}
+                onSubmit={
+                  handleSaveNewAddress
+                }
                 className="space-y-4"
               >
 
@@ -526,12 +851,18 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                       type="text"
                       required
                       placeholder="e.g. Alex Rivers"
-                      value={addressForm.fullName}
-                      onChange={(e) =>
-                        setAddressForm({
-                          ...addressForm,
-                          fullName: e.target.value,
-                        })
+                      value={
+                        addressForm.fullName
+                      }
+                      onChange={(event) =>
+                        setAddressForm(
+                          (previous) => ({
+                            ...previous,
+                            fullName:
+                              event.target
+                                .value,
+                          })
+                        )
                       }
                       className="w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-300 rounded-lg focus:outline-none focus:border-neutral-900"
                     />
@@ -545,13 +876,19 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                     <input
                       type="tel"
                       required
-                      placeholder="e.g. +1 (555) 019-2834"
-                      value={addressForm.phone}
-                      onChange={(e) =>
-                        setAddressForm({
-                          ...addressForm,
-                          phone: e.target.value,
-                        })
+                      placeholder="+91 9876543210"
+                      value={
+                        addressForm.phone
+                      }
+                      onChange={(event) =>
+                        setAddressForm(
+                          (previous) => ({
+                            ...previous,
+                            phone:
+                              event.target
+                                .value,
+                          })
+                        )
                       }
                       className="w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-300 rounded-lg focus:outline-none focus:border-neutral-900"
                     />
@@ -567,14 +904,45 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                   <input
                     type="text"
                     required
-                    placeholder="e.g. 742 Evergreen Terrace, Apt 4B"
-                    value={addressForm.addressLine1}
-                    onChange={(e) =>
-                      setAddressForm({
-                        ...addressForm,
-                        addressLine1:
-                          e.target.value,
-                      })
+                    placeholder="House No., Street, Area"
+                    value={
+                      addressForm.addressLine1
+                    }
+                    onChange={(event) =>
+                      setAddressForm(
+                        (previous) => ({
+                          ...previous,
+                          addressLine1:
+                            event.target
+                              .value,
+                        })
+                      )
+                    }
+                    className="w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-300 rounded-lg focus:outline-none focus:border-neutral-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-neutral-700 mb-1">
+                    Address Line 2
+                  </label>
+
+                  <input
+                    type="text"
+                    placeholder="Apartment, Floor, Building"
+                    value={
+                      addressForm.addressLine2 ||
+                      ''
+                    }
+                    onChange={(event) =>
+                      setAddressForm(
+                        (previous) => ({
+                          ...previous,
+                          addressLine2:
+                            event.target
+                              .value,
+                        })
+                      )
                     }
                     className="w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-300 rounded-lg focus:outline-none focus:border-neutral-900"
                   />
@@ -591,12 +959,18 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                       type="text"
                       required
                       placeholder="City"
-                      value={addressForm.city}
-                      onChange={(e) =>
-                        setAddressForm({
-                          ...addressForm,
-                          city: e.target.value,
-                        })
+                      value={
+                        addressForm.city
+                      }
+                      onChange={(event) =>
+                        setAddressForm(
+                          (previous) => ({
+                            ...previous,
+                            city:
+                              event.target
+                                .value,
+                          })
+                        )
                       }
                       className="w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-300 rounded-lg focus:outline-none focus:border-neutral-900"
                     />
@@ -611,12 +985,18 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                       type="text"
                       required
                       placeholder="State"
-                      value={addressForm.state}
-                      onChange={(e) =>
-                        setAddressForm({
-                          ...addressForm,
-                          state: e.target.value,
-                        })
+                      value={
+                        addressForm.state
+                      }
+                      onChange={(event) =>
+                        setAddressForm(
+                          (previous) => ({
+                            ...previous,
+                            state:
+                              event.target
+                                .value,
+                          })
+                        )
                       }
                       className="w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-300 rounded-lg focus:outline-none focus:border-neutral-900"
                     />
@@ -631,18 +1011,49 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                       type="text"
                       required
                       placeholder="Postal Code"
-                      value={addressForm.postalCode}
-                      onChange={(e) =>
-                        setAddressForm({
-                          ...addressForm,
-                          postalCode:
-                            e.target.value,
-                        })
+                      value={
+                        addressForm.postalCode
+                      }
+                      onChange={(event) =>
+                        setAddressForm(
+                          (previous) => ({
+                            ...previous,
+                            postalCode:
+                              event.target
+                                .value,
+                          })
+                        )
                       }
                       className="w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-300 rounded-lg focus:outline-none focus:border-neutral-900"
                     />
                   </div>
 
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-neutral-700 mb-1">
+                    Landmark
+                  </label>
+
+                  <input
+                    type="text"
+                    placeholder="Nearby landmark"
+                    value={
+                      addressForm.landmark ||
+                      ''
+                    }
+                    onChange={(event) =>
+                      setAddressForm(
+                        (previous) => ({
+                          ...previous,
+                          landmark:
+                            event.target
+                              .value,
+                        })
+                      )
+                    }
+                    className="w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-300 rounded-lg focus:outline-none focus:border-neutral-900"
+                  />
                 </div>
 
                 {savedAddresses.length > 0 && (
@@ -651,7 +1062,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                     <button
                       type="button"
                       onClick={() =>
-                        setIsAddingNewAddress(false)
+                        setIsAddingNewAddress(
+                          false
+                        )
                       }
                       className="px-4 py-2 text-xs font-semibold text-neutral-600 hover:text-neutral-900"
                     >
@@ -673,7 +1086,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
 
           </div>
 
-          {/* STEP 2 - DELIVERY */}
+          {/* DELIVERY METHOD */}
           <div className="bg-white rounded-xl border border-neutral-200 p-6 space-y-4 shadow-xs">
 
             <div className="flex items-center gap-2 border-b border-neutral-100 pb-3">
@@ -690,14 +1103,16 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 
-              {/* STANDARD */}
               <button
                 type="button"
                 onClick={() =>
-                  setDeliveryMethod('standard')
+                  setDeliveryMethod(
+                    'standard'
+                  )
                 }
-                className={`text-left p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${
-                  deliveryMethod === 'standard'
+                className={`text-left p-4 rounded-xl border-2 transition-all flex items-center justify-between ${
+                  deliveryMethod ===
+                  'standard'
                     ? 'border-neutral-950 bg-neutral-50'
                     : 'border-neutral-200 hover:border-neutral-400'
                 }`}
@@ -714,21 +1129,23 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                 </div>
 
                 <span className="text-xs font-black text-neutral-950">
-                  {shippingFee === 0
-                    ? 'FREE'
-                    : `$${shippingFee.toFixed(2)}`}
+                  {baseShippingDisplay(
+                    shippingFee
+                  )}
                 </span>
 
               </button>
 
-              {/* EXPRESS */}
               <button
                 type="button"
                 onClick={() =>
-                  setDeliveryMethod('express')
+                  setDeliveryMethod(
+                    'express'
+                  )
                 }
-                className={`text-left p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${
-                  deliveryMethod === 'express'
+                className={`text-left p-4 rounded-xl border-2 transition-all flex items-center justify-between ${
+                  deliveryMethod ===
+                  'express'
                     ? 'border-neutral-950 bg-neutral-50'
                     : 'border-neutral-200 hover:border-neutral-400'
                 }`}
@@ -751,9 +1168,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
               </button>
 
             </div>
+
           </div>
 
-          {/* STEP 3 - PAYMENT */}
+          {/* PAYMENT */}
           <div className="bg-white rounded-xl border border-neutral-200 p-6 space-y-4 shadow-xs">
 
             <div className="flex items-center gap-2 border-b border-neutral-100 pb-3">
@@ -802,7 +1220,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                     )
                   }
                   className={`p-3 rounded-lg border-2 text-left transition-all flex flex-col items-center justify-center gap-1.5 ${
-                    paymentMethod === method.id
+                    paymentMethod ===
+                    method.id
                       ? 'border-neutral-950 bg-neutral-950 text-white shadow-xs'
                       : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-400'
                   }`}
@@ -821,7 +1240,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
             </div>
 
             {/* CARD */}
-            {paymentMethod === 'card' && (
+            {paymentMethod ===
+              'card' && (
 
               <div className="p-4 bg-neutral-50 rounded-xl border border-neutral-200 space-y-3">
 
@@ -833,8 +1253,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                   <input
                     type="text"
                     value={cardNumber}
-                    onChange={(e) =>
-                      setCardNumber(e.target.value)
+                    onChange={(event) =>
+                      setCardNumber(
+                        event.target.value
+                      )
                     }
                     className="w-full px-3 py-2 text-xs bg-white border border-neutral-300 rounded-lg font-mono focus:outline-none"
                   />
@@ -850,8 +1272,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                     <input
                       type="text"
                       value={cardExpiry}
-                      onChange={(e) =>
-                        setCardExpiry(e.target.value)
+                      onChange={(event) =>
+                        setCardExpiry(
+                          event.target.value
+                        )
                       }
                       className="w-full px-3 py-2 text-xs bg-white border border-neutral-300 rounded-lg font-mono focus:outline-none"
                     />
@@ -865,8 +1289,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                     <input
                       type="password"
                       value={cardCvc}
-                      onChange={(e) =>
-                        setCardCvc(e.target.value)
+                      onChange={(event) =>
+                        setCardCvc(
+                          event.target.value
+                        )
                       }
                       className="w-full px-3 py-2 text-xs bg-white border border-neutral-300 rounded-lg font-mono focus:outline-none"
                     />
@@ -878,7 +1304,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
             )}
 
             {/* UPI */}
-            {paymentMethod === 'upi' && (
+            {paymentMethod ===
+              'upi' && (
 
               <div className="p-4 bg-neutral-50 rounded-xl border border-neutral-200 space-y-2">
 
@@ -889,8 +1316,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                 <input
                   type="text"
                   value={upiId}
-                  onChange={(e) =>
-                    setUpiId(e.target.value)
+                  onChange={(event) =>
+                    setUpiId(
+                      event.target.value
+                    )
                   }
                   className="w-full px-3 py-2 text-xs bg-white border border-neutral-300 rounded-lg font-mono focus:outline-none"
                 />
@@ -899,7 +1328,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
             )}
 
             {/* RAZORPAY */}
-            {paymentMethod === 'razorpay' && (
+            {paymentMethod ===
+              'razorpay' && (
 
               <div className="p-4 bg-neutral-50 rounded-xl border border-neutral-200">
 
@@ -918,7 +1348,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
             )}
 
             {/* COD */}
-            {paymentMethod === 'cod' && (
+            {paymentMethod ===
+              'cod' && (
 
               <div className="p-4 bg-neutral-50 rounded-xl border border-neutral-200">
 
@@ -939,13 +1370,14 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
 
         </div>
 
-        {/* RIGHT COLUMN */}
+        {/* RIGHT */}
         <div className="lg:col-span-4 space-y-4 sticky top-24">
 
           <div className="bg-white rounded-xl border border-neutral-200 p-5 space-y-4 shadow-xs">
 
             <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-900 border-b border-neutral-100 pb-3">
-              Order Review ({cart.length} styles)
+              Order Review ({cart.length}{' '}
+              styles)
             </h3>
 
             {/* ITEMS */}
@@ -959,8 +1391,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                 >
 
                   <img
-                    src={item.image}
-                    alt={item.name}
+                    src={item.image || ''}
+                    alt={item.name || 'Product'}
                     referrerPolicy="no-referrer"
                     className="w-9 h-9 rounded object-cover border border-neutral-200 shrink-0"
                   />
@@ -972,13 +1404,25 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                     </p>
 
                     <p className="text-[11px] text-neutral-400">
-                      {item.size} • Qty {item.quantity}
+                      {item.size || 'Standard'}{' '}
+                      • Qty{' '}
+                      {Number(
+                        item.quantity
+                      ) || 1}
                     </p>
 
                   </div>
 
                   <span className="font-bold text-neutral-900 shrink-0">
-                    ${(item.price * item.quantity).toFixed(2)}
+                    $
+                    {(
+                      (Number(
+                        item.price
+                      ) || 0) *
+                      (Number(
+                        item.quantity
+                      ) || 1)
+                    ).toFixed(2)}
                   </span>
 
                 </div>
@@ -991,14 +1435,24 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
             <div className="space-y-2 text-xs text-neutral-600 border-t border-neutral-100 pt-3">
 
               <div className="flex justify-between">
-                <span>Subtotal</span>
+
+                <span>
+                  Subtotal
+                </span>
 
                 <span className="font-semibold text-neutral-900">
-                  ${subtotal.toFixed(2)}
+                  $
+                  {(
+                    Number(
+                      subtotal
+                    ) || 0
+                  ).toFixed(2)}
                 </span>
+
               </div>
 
-              {discount > 0 && (
+              {Number(discount) >
+                0 && (
 
                 <div className="flex justify-between text-emerald-600 font-medium">
 
@@ -1010,7 +1464,12 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                   </span>
 
                   <span>
-                    -${discount.toFixed(2)}
+                    -$
+                    {(
+                      Number(
+                        discount
+                      ) || 0
+                    ).toFixed(2)}
                   </span>
 
                 </div>
@@ -1020,7 +1479,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
 
                 <span>
                   Shipping (
-                  {deliveryMethod === 'express'
+                  {deliveryMethod ===
+                  'express'
                     ? 'Priority Air'
                     : 'Standard'}
                   )
@@ -1028,11 +1488,23 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
 
                 <span className="font-semibold text-neutral-900">
 
-                  {deliveryMethod === 'express'
-                    ? `$${(shippingFee + 8).toFixed(2)}`
-                    : shippingFee === 0
+                  {deliveryMethod ===
+                  'express'
+                    ? `$${(
+                        (Number(
+                          shippingFee
+                        ) || 0) +
+                        8
+                      ).toFixed(2)}`
+                    : Number(
+                        shippingFee
+                      ) === 0
                     ? 'FREE'
-                    : `$${shippingFee.toFixed(2)}`}
+                    : `$${(
+                        Number(
+                          shippingFee
+                        ) || 0
+                      ).toFixed(2)}`}
 
                 </span>
 
@@ -1040,10 +1512,16 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
 
               <div className="flex justify-between">
 
-                <span>Estimated Tax (5%)</span>
+                <span>
+                  Estimated Tax
+                </span>
 
                 <span className="font-semibold text-neutral-900">
-                  ${tax.toFixed(2)}
+                  $
+                  {(
+                    Number(tax) ||
+                    0
+                  ).toFixed(2)}
                 </span>
 
               </div>
@@ -1055,7 +1533,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                 </span>
 
                 <span className="text-xl font-black text-neutral-950">
-                  ${displayTotal.toFixed(2)}
+                  $
+                  {displayTotal.toFixed(
+                    2
+                  )}
                 </span>
 
               </div>
@@ -1065,8 +1546,13 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
             {/* PLACE ORDER */}
             <button
               id="confirm-place-order-btn"
-              disabled={placingOrder}
-              onClick={handlePlaceOrder}
+              type="button"
+              disabled={
+                placingOrder
+              }
+              onClick={
+                handlePlaceOrder
+              }
               className="w-full py-3.5 bg-neutral-950 hover:bg-neutral-800 disabled:bg-neutral-400 text-white text-xs font-bold uppercase tracking-wider rounded-lg transition-colors flex items-center justify-center gap-2 shadow-lg"
             >
 
@@ -1083,7 +1569,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
 
                   <span>
                     Place Order • $
-                    {displayTotal.toFixed(2)}
+                    {displayTotal.toFixed(
+                      2
+                    )}
                   </span>
                 </>
 
@@ -1092,8 +1580,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
             </button>
 
             <p className="text-[10px] text-neutral-400 text-center leading-normal">
-              By confirming, you agree to Sanu Builds
-              Terms of Service and 30-Day Return Policy.
+              By confirming, you agree to
+              Sanu Builds Terms of Service
+              and 30-Day Return Policy.
             </p>
 
           </div>
@@ -1104,4 +1593,18 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
 
     </div>
   );
+};
+
+/*
+ * Standard shipping display helper.
+ */
+const baseShippingDisplay = (
+  shipping: number
+): string => {
+  const value =
+    Number(shipping) || 0;
+
+  return value === 0
+    ? 'FREE'
+    : `$${value.toFixed(2)}`;
 };
