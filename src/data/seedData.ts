@@ -1,448 +1,425 @@
+// src/data/seedData.ts
+
 import { Category, Coupon, Product, Review } from '../types';
+
+const IMAGE_BASE = 'https://placehold.co/800x1000/png';
 
 export const SEED_CATEGORIES: Category[] = [
   {
-    id: 'oversized',
-    name: 'Oversized Tees',
-    slug: 'oversized-tees',
-    description: '240 GSM drop-shoulder boxy cuts engineered for modern street silhouettes.',
-    image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=800&q=80',
+    id: 'tshirts',
+    name: 'T-Shirts',
+    slug: 'tshirts',
+    description: 'Everyday Sanu Builds T-shirts with clean fits and comfortable fabrics.',
+    image: `${IMAGE_BASE}?text=Sanu+Builds+T-Shirts`,
     featured: true,
-    productCount: 4,
-  },
-  {
-    id: 'minimal',
-    name: 'Minimal Tees',
-    slug: 'minimal-tees',
-    description: 'Clean typographic statements and subtle embroidery on luxury combed cotton.',
-    image: 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?auto=format&fit=crop&w=800&q=80',
-    featured: true,
-    productCount: 3,
-  },
-  {
-    id: 'graphic',
-    name: 'Graphic Builder Tees',
-    slug: 'graphic-tees',
-    description: 'High-density screen prints for builders, coders, creators, and disruptors.',
-    image: 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=800&q=80',
-    featured: true,
-    productCount: 3,
-  },
-  {
-    id: 'heavyweight',
-    name: 'Heavyweight Basics',
-    slug: 'heavyweight-basics',
-    description: '280 GSM ultra-dense french terry cotton. Zero see-through, zero collar sag.',
-    image: 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?auto=format&fit=crop&w=800&q=80',
-    featured: true,
-    productCount: 3,
-  },
-  {
-    id: 'regular',
-    name: 'Regular Fit',
-    slug: 'regular-fit',
-    description: 'Timeless tailored proportions with pre-shrunk organic ring-spun cotton.',
-    image: 'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?auto=format&fit=crop&w=800&q=80',
-    featured: false,
     productCount: 2,
+  },
+  {
+    id: 'polo-tshirts',
+    name: 'Polo T-Shirts',
+    slug: 'polo-tshirts',
+    description: 'Premium solid polo T-shirts for a clean and classic look.',
+    image: `${IMAGE_BASE}?text=Sanu+Builds+Polo`,
+    featured: true,
+    productCount: 1,
+  },
+  {
+    id: 'car-accessories',
+    name: 'Car Accessories',
+    slug: 'car-accessories',
+    description: 'Useful automotive accessories and products.',
+    image: `${IMAGE_BASE}?text=Car+Accessories`,
+    featured: true,
+    productCount: 1,
+  },
+  {
+    id: 'cables',
+    name: 'Cables',
+    slug: 'cables',
+    description: 'Reliable charging and data cables for everyday devices.',
+    image: `${IMAGE_BASE}?text=USB+Cables`,
+    featured: true,
+    productCount: 1,
   },
 ];
 
 export const SEED_PRODUCTS: Product[] = [
   {
-    id: 'sb-001',
-    name: 'Sanu Builds Essential Oversized Black Tee',
-    slug: 'sanu-builds-essential-oversized-black-tee',
-    description: 'The foundation of the Sanu Builds collection. Engineered from 240 GSM pre-shrunk combed organic cotton with a structured drop-shoulder drape and a reinforced 1.25" ribbed collar that retains its shape wash after wash. Minimal tone-on-tone silicone micro-branding on the back collar.',
-    categoryId: 'oversized',
-    categoryName: 'Oversized Tees',
+    id: 'sb-blk-polo-004',
+    name: "Sanu Builds Men's Premium Black Solid Cotton Blend Polo T-Shirt",
+    slug: 'sanu-builds-mens-premium-black-solid-cotton-blend-polo-tshirt',
+    description:
+      "Premium black solid cotton blend polo T-shirt from Sanu Builds. Clean solid design with a classic polo silhouette, suitable for everyday wear, casual outfits and smart-casual styling.",
+    categoryId: 'polo-tshirts',
+    categoryName: 'Polo T-Shirts',
     brand: 'Sanu Builds',
-    price: 38,
-    compareAtPrice: 48,
-    discountPercentage: 21,
+    price: 340,
+    compareAtPrice: 340,
+    discountPercentage: 0,
     images: [
-      'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=1000&q=80',
-      'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=1000&q=80',
-      'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?auto=format&fit=crop&w=1000&q=80',
+      `${IMAGE_BASE}?text=Sanu+Builds+Black+Polo`,
+      `${IMAGE_BASE}?text=Black+Polo+Front`,
+      `${IMAGE_BASE}?text=Black+Polo+Back`,
     ],
-    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
+    sizes: ['S', 'M', 'L'],
     colors: [
-      { name: 'Onyx Black', hex: '#111111' },
-      { name: 'Charcoal Wash', hex: '#2c2c2e' },
-      { name: 'Pure Chalk', hex: '#f8f8f8' },
+      {
+        name: 'Black',
+        hex: '#111111',
+      },
     ],
     variants: [
-      { id: 'sb-001-S-blk', size: 'S', color: 'Onyx Black', stock: 15, sku: 'SB-001-BLK-S' },
-      { id: 'sb-001-M-blk', size: 'M', color: 'Onyx Black', stock: 24, sku: 'SB-001-BLK-M' },
-      { id: 'sb-001-L-blk', size: 'L', color: 'Onyx Black', stock: 18, sku: 'SB-001-BLK-L' },
-      { id: 'sb-001-XL-blk', size: 'XL', color: 'Onyx Black', stock: 9, sku: 'SB-001-BLK-XL' },
-      { id: 'sb-001-XXL-blk', size: 'XXL', color: 'Onyx Black', stock: 4, sku: 'SB-001-BLK-XXL' },
-      { id: 'sb-001-S-wht', size: 'S', color: 'Pure Chalk', stock: 12, sku: 'SB-001-WHT-S' },
-      { id: 'sb-001-M-wht', size: 'M', color: 'Pure Chalk', stock: 20, sku: 'SB-001-WHT-M' },
-      { id: 'sb-001-L-wht', size: 'L', color: 'Pure Chalk', stock: 14, sku: 'SB-001-WHT-L' },
-      { id: 'sb-001-XL-wht', size: 'XL', color: 'Pure Chalk', stock: 8, sku: 'SB-001-WHT-XL' },
-      { id: 'sb-001-XXL-wht', size: 'XXL', color: 'Pure Chalk', stock: 3, sku: 'SB-001-WHT-XXL' },
+      {
+        id: 'sb-blk-polo-004-s',
+        size: 'S',
+        color: 'Black',
+        stock: 10,
+        sku: 'SB-BLK-POLO-004S',
+        price: 340,
+      },
+      {
+        id: 'sb-blk-polo-004-m',
+        size: 'M',
+        color: 'Black',
+        stock: 10,
+        sku: 'SB-BLK-POLO-004M',
+        price: 340,
+      },
+      {
+        id: 'sb-blk-polo-004-l',
+        size: 'L',
+        color: 'Black',
+        stock: 10,
+        sku: 'SB-BLK-POLO-004L',
+        price: 340,
+      },
     ],
-    stock: 127,
-    sku: 'SB-OVR-001',
-    rating: 4.9,
-    reviewCount: 38,
-    tags: ['oversized', 'bestseller', 'black tee', 'heavyweight', 'essential'],
-    featured: true,
-    bestseller: true,
-    newArrival: false,
-    active: true,
-    details: {
-      fabric: '100% Ring-Spun Combed Cotton',
-      fit: 'Relaxed Drop-Shoulder Boxy Silhouette',
-      gsm: 240,
-      washCare: 'Machine wash cold inside out, hang dry recommended',
-      modelDetails: 'Model is 6\'1" (185 cm) wearing size L for a relaxed drape',
-    },
-    createdAt: '2026-01-10T10:00:00.000Z',
-    updatedAt: '2026-02-15T12:00:00.000Z',
-  },
-  {
-    id: 'sb-002',
-    name: 'Sanu Builds "BUILD YOUR STYLE" Graphic Tee',
-    slug: 'sanu-builds-build-your-style-graphic-tee',
-    description: 'Statement apparel for the modern craftsperson. Features our signature high-density puff screen print "BUILD YOUR STYLE" across the upper back with a minimalist chest crest. Fabricated from smooth 220 GSM single jersey cotton with bio-wash softening.',
-    categoryId: 'graphic',
-    categoryName: 'Graphic Builder Tees',
-    brand: 'Sanu Builds',
-    price: 42,
-    compareAtPrice: 52,
-    discountPercentage: 19,
-    images: [
-      'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=1000&q=80',
-      'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=1000&q=80',
-      'https://images.unsplash.com/photo-1576566588028-4147f3842f27?auto=format&fit=crop&w=1000&q=80',
+    stock: 30,
+    sku: 'SB-BLK-POLO-004',
+    rating: 0,
+    reviewCount: 0,
+    tags: [
+      'polo',
+      'black polo',
+      'cotton blend',
+      'mens polo',
+      'sanu builds',
     ],
-    sizes: ['S', 'M', 'L', 'XL'],
-    colors: [
-      { name: 'Onyx Black', hex: '#111111' },
-      { name: 'Vintage Sand', hex: '#d8cbb8' },
-    ],
-    variants: [
-      { id: 'sb-002-S-blk', size: 'S', color: 'Onyx Black', stock: 10, sku: 'SB-002-BLK-S' },
-      { id: 'sb-002-M-blk', size: 'M', color: 'Onyx Black', stock: 16, sku: 'SB-002-BLK-M' },
-      { id: 'sb-002-L-blk', size: 'L', color: 'Onyx Black', stock: 14, sku: 'SB-002-BLK-L' },
-      { id: 'sb-002-XL-blk', size: 'XL', color: 'Onyx Black', stock: 6, sku: 'SB-002-BLK-XL' },
-      { id: 'sb-002-M-snd', size: 'M', color: 'Vintage Sand', stock: 8, sku: 'SB-002-SND-M' },
-      { id: 'sb-002-L-snd', size: 'L', color: 'Vintage Sand', stock: 11, sku: 'SB-002-SND-L' },
-    ],
-    stock: 65,
-    sku: 'SB-GRP-002',
-    rating: 4.8,
-    reviewCount: 26,
-    tags: ['graphic', 'statement', 'puff print', 'builder', 'new arrival'],
     featured: true,
     bestseller: false,
     newArrival: true,
     active: true,
-    details: {
-      fabric: '100% Bio-Washed Combed Cotton',
-      fit: 'Slightly Relaxed Modern Fit',
-      gsm: 220,
-      washCare: 'Machine wash cold, iron inside out away from graphic',
-      modelDetails: 'Model is 5\'11" (180 cm) wearing size M',
-    },
-    createdAt: '2026-02-01T10:00:00.000Z',
-    updatedAt: '2026-02-20T12:00:00.000Z',
+    createdAt: '2026-08-24T10:00:00.000Z',
+    updatedAt: '2026-08-24T10:00:00.000Z',
   },
+
   {
-    id: 'sb-003',
-    name: 'Sanu Builds Minimalist Monogram Chalk White Tee',
-    slug: 'sanu-builds-minimalist-monogram-chalk-white-tee',
-    description: 'Subtle elegance meets daily comfort. Crisp chalk white 240 GSM cotton with an ultra-precise 3D embroidered Sanu monogram on the left chest. Thick neckline with twin-needle hem stitching ensuring durability and zero roll.',
-    categoryId: 'minimal',
-    categoryName: 'Minimal Tees',
+    id: 'sb-rn-wht-001',
+    name: "Men's White Round Neck T-Shirt",
+    slug: 'mens-white-round-neck-tshirt',
+    description:
+      "Classic men's white round neck T-shirt from Sanu Builds. A simple everyday T-shirt designed for casual wear and easy styling.",
+    categoryId: 'tshirts',
+    categoryName: 'T-Shirts',
     brand: 'Sanu Builds',
-    price: 36,
-    compareAtPrice: 45,
-    discountPercentage: 20,
+    price: 180,
+    compareAtPrice: 180,
+    discountPercentage: 0,
     images: [
-      'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?auto=format&fit=crop&w=1000&q=80',
-      'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=1000&q=80',
-      'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?auto=format&fit=crop&w=1000&q=80',
+      `${IMAGE_BASE}?text=White+Round+Neck+T-Shirt`,
+      `${IMAGE_BASE}?text=White+T-Shirt+Front`,
+      `${IMAGE_BASE}?text=White+T-Shirt+Back`,
     ],
-    sizes: ['XS', 'S', 'M', 'L', 'XL'],
+    sizes: ['M', 'L', 'XL'],
     colors: [
-      { name: 'Pure Chalk', hex: '#f9f9f9' },
-      { name: 'Muted Slate', hex: '#687076' },
+      {
+        name: 'White',
+        hex: '#FFFFFF',
+      },
     ],
     variants: [
-      { id: 'sb-003-XS-wht', size: 'XS', color: 'Pure Chalk', stock: 6, sku: 'SB-003-WHT-XS' },
-      { id: 'sb-003-S-wht', size: 'S', color: 'Pure Chalk', stock: 18, sku: 'SB-003-WHT-S' },
-      { id: 'sb-003-M-wht', size: 'M', color: 'Pure Chalk', stock: 22, sku: 'SB-003-WHT-M' },
-      { id: 'sb-003-L-wht', size: 'L', color: 'Pure Chalk', stock: 17, sku: 'SB-003-WHT-L' },
-      { id: 'sb-003-XL-wht', size: 'XL', color: 'Pure Chalk', stock: 9, sku: 'SB-003-WHT-XL' },
+      {
+        id: 'sb-rn-wht-001-m',
+        size: 'M',
+        color: 'White',
+        stock: 10,
+        sku: 'WT-WHT-130-RN-M',
+        price: 180,
+      },
+      {
+        id: 'sb-rn-wht-001-l',
+        size: 'L',
+        color: 'White',
+        stock: 10,
+        sku: 'WT-WHT-130-RN-L',
+        price: 180,
+      },
+      {
+        id: 'sb-rn-wht-001-xl',
+        size: 'XL',
+        color: 'White',
+        stock: 10,
+        sku: 'WT-WHT-130-RN-XL',
+        price: 180,
+      },
     ],
-    stock: 72,
-    sku: 'SB-MIN-003',
-    rating: 4.9,
-    reviewCount: 41,
-    tags: ['white tee', 'minimal', 'embroidered', 'bestseller'],
-    featured: true,
-    bestseller: true,
-    newArrival: false,
-    active: true,
-    details: {
-      fabric: '100% Super-Combed Ringspun Cotton',
-      fit: 'Regular Street Fit',
-      gsm: 240,
-      washCare: 'Machine wash warm with like colors',
-      modelDetails: 'Model is 6\'0" (183 cm) wearing size L',
-    },
-    createdAt: '2026-01-05T10:00:00.000Z',
-    updatedAt: '2026-02-18T12:00:00.000Z',
-  },
-  {
-    id: 'sb-004',
-    name: 'Sanu Builds 280 GSM Ultra-Heavyweight Slate Tee',
-    slug: 'sanu-builds-280gsm-ultra-heavyweight-slate-tee',
-    description: 'Our densest build ever. Crafted with 280 GSM heavyweight French Terry jersey. Provides an architectonic drape with zero clinging, high insulation, and an ultra-soft peached exterior finish. Finished with deep blind stitching and herringbone neck-tape.',
-    categoryId: 'heavyweight',
-    categoryName: 'Heavyweight Basics',
-    brand: 'Sanu Builds',
-    price: 46,
-    compareAtPrice: 58,
-    discountPercentage: 21,
-    images: [
-      'https://images.unsplash.com/photo-1576566588028-4147f3842f27?auto=format&fit=crop&w=1000&q=80',
-      'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=1000&q=80',
-      'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?auto=format&fit=crop&w=1000&q=80',
+    stock: 30,
+    sku: 'WT-WHT-130-RN',
+    rating: 0,
+    reviewCount: 0,
+    tags: [
+      'white t-shirt',
+      'round neck',
+      'mens t-shirt',
+      'basic t-shirt',
+      'sanu builds',
     ],
-    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
-    colors: [
-      { name: 'Raw Slate', hex: '#474f59' },
-      { name: 'Onyx Black', hex: '#111111' },
-      { name: 'Forest Moss', hex: '#2b3a2f' },
-    ],
-    variants: [
-      { id: 'sb-004-S-slt', size: 'S', color: 'Raw Slate', stock: 8, sku: 'SB-004-SLT-S' },
-      { id: 'sb-004-M-slt', size: 'M', color: 'Raw Slate', stock: 14, sku: 'SB-004-SLT-M' },
-      { id: 'sb-004-L-slt', size: 'L', color: 'Raw Slate', stock: 12, sku: 'SB-004-SLT-L' },
-      { id: 'sb-004-XL-slt', size: 'XL', color: 'Raw Slate', stock: 5, sku: 'SB-004-SLT-XL' },
-      { id: 'sb-004-M-mst', size: 'M', color: 'Forest Moss', stock: 9, sku: 'SB-004-MST-M' },
-      { id: 'sb-004-L-mst', size: 'L', color: 'Forest Moss', stock: 8, sku: 'SB-004-MST-L' },
-    ],
-    stock: 56,
-    sku: 'SB-HVY-004',
-    rating: 5.0,
-    reviewCount: 19,
-    tags: ['heavyweight', '280gsm', 'premium', 'french terry', 'slate'],
     featured: true,
     bestseller: false,
     newArrival: true,
     active: true,
-    details: {
-      fabric: '100% Heavyweight French Terry Cotton',
-      fit: 'Heavy Boxy Cut',
-      gsm: 280,
-      washCare: 'Cold wash, flat dry in shade',
-      modelDetails: 'Model is 6\'2" (188 cm) wearing size XL',
-    },
-    createdAt: '2026-02-10T10:00:00.000Z',
-    updatedAt: '2026-02-22T12:00:00.000Z',
+    createdAt: '2026-08-24T10:10:00.000Z',
+    updatedAt: '2026-08-24T10:10:00.000Z',
   },
+
   {
-    id: 'sb-005',
-    name: 'Sanu Builds "CREATOR // ENGINEER" Typographic Tee',
-    slug: 'sanu-builds-creator-engineer-typographic-tee',
-    description: 'Engineered for those who turn concepts into code and blueprints into reality. Screen-printed with archival pigment ink on 240 GSM organic cotton with micro-contrast typography and coordinate detailing.',
-    categoryId: 'graphic',
-    categoryName: 'Graphic Builder Tees',
-    brand: 'Sanu Builds',
-    price: 40,
-    compareAtPrice: 50,
-    discountPercentage: 20,
+    id: 'anr-horn-001',
+    name: 'ANRITVOX Horn 12V Dual Tone Set 2 PCS',
+    slug: 'anritvox-horn-12v-dual-tone-set-2-pcs',
+    description:
+      'ANRITVOX 12V dual tone horn set containing 2 pieces. Suitable for compatible 12V vehicles.',
+    categoryId: 'car-accessories',
+    categoryName: 'Car Accessories',
+    brand: 'ANRITVOX',
+    price: 1699,
+    compareAtPrice: 1699,
+    discountPercentage: 0,
     images: [
-      'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?auto=format&fit=crop&w=1000&q=80',
-      'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=1000&q=80',
+      `${IMAGE_BASE}?text=ANRITVOX+12V+Horn`,
+      `${IMAGE_BASE}?text=Dual+Tone+Horn`,
     ],
-    sizes: ['S', 'M', 'L', 'XL'],
+    sizes: ['Free Size'],
     colors: [
-      { name: 'Onyx Black', hex: '#111111' },
-      { name: 'Chalk White', hex: '#fafafa' },
+      {
+        name: 'Black',
+        hex: '#111111',
+      },
     ],
     variants: [
-      { id: 'sb-005-S-blk', size: 'S', color: 'Onyx Black', stock: 11, sku: 'SB-005-BLK-S' },
-      { id: 'sb-005-M-blk', size: 'M', color: 'Onyx Black', stock: 19, sku: 'SB-005-BLK-M' },
-      { id: 'sb-005-L-blk', size: 'L', color: 'Onyx Black', stock: 15, sku: 'SB-005-BLK-L' },
-      { id: 'sb-005-XL-blk', size: 'XL', color: 'Onyx Black', stock: 7, sku: 'SB-005-BLK-XL' },
+      {
+        id: 'anr-horn-001-free',
+        size: 'Free Size',
+        color: 'Black',
+        stock: 0,
+        sku: 'ANR-HORN-001',
+        price: 1699,
+      },
     ],
-    stock: 52,
-    sku: 'SB-GRP-005',
-    rating: 4.7,
-    reviewCount: 15,
-    tags: ['graphic', 'creator', 'engineer', 'developer tee'],
+    stock: 0,
+    sku: 'ANR-HORN-001',
+    rating: 0,
+    reviewCount: 0,
+    tags: [
+      'car horn',
+      '12v horn',
+      'dual tone',
+      'anritvox',
+      'car accessory',
+    ],
     featured: false,
     bestseller: false,
     newArrival: true,
     active: true,
-    details: {
-      fabric: '100% Combed Ringspun Cotton',
-      fit: 'Relaxed Fit',
-      gsm: 240,
-      washCare: 'Wash cold inside out',
-      modelDetails: 'Model is 5\'10" (178 cm) wearing size M',
-    },
-    createdAt: '2026-02-12T10:00:00.000Z',
-    updatedAt: '2026-02-21T12:00:00.000Z',
+    createdAt: '2026-08-24T10:20:00.000Z',
+    updatedAt: '2026-08-24T10:20:00.000Z',
   },
+
   {
-    id: 'sb-006',
-    name: 'Sanu Builds Vintage Acid-Wash Charcoal Tee',
-    slug: 'sanu-builds-vintage-acid-wash-charcoal-tee',
-    description: 'Each piece features an individually artisan-washed mineral finish. Heavy 260 GSM fabric creates a soft, lived-in feel from day one. Drop shoulder construction with raw edge details on the hem.',
-    categoryId: 'oversized',
-    categoryName: 'Oversized Tees',
+    id: 'sb-usbc-2m-001',
+    name: '2M USB A to USB C Data Charging Cable',
+    slug: '2m-usb-a-to-usb-c-data-charging-cable',
+    description:
+      '2 meter USB A to USB C data and charging cable designed for convenient everyday charging and data transfer.',
+    categoryId: 'cables',
+    categoryName: 'Cables',
     brand: 'Sanu Builds',
-    price: 44,
-    compareAtPrice: 55,
-    discountPercentage: 20,
+    price: 110,
+    compareAtPrice: 110,
+    discountPercentage: 0,
     images: [
-      'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=1000&q=80',
-      'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=1000&q=80',
+      `${IMAGE_BASE}?text=USB+A+to+USB+C+Cable`,
+      `${IMAGE_BASE}?text=2M+USB+C+Cable`,
     ],
-    sizes: ['S', 'M', 'L', 'XL'],
+    sizes: ['Free Size'],
     colors: [
-      { name: 'Acid Charcoal', hex: '#333333' },
-      { name: 'Washed Olive', hex: '#3b4238' },
+      {
+        name: 'White',
+        hex: '#FFFFFF',
+      },
     ],
     variants: [
-      { id: 'sb-006-S-chr', size: 'S', color: 'Acid Charcoal', stock: 7, sku: 'SB-006-CHR-S' },
-      { id: 'sb-006-M-chr', size: 'M', color: 'Acid Charcoal', stock: 15, sku: 'SB-006-CHR-M' },
-      { id: 'sb-006-L-chr', size: 'L', color: 'Acid Charcoal', stock: 11, sku: 'SB-006-CHR-L' },
-      { id: 'sb-006-XL-chr', size: 'XL', color: 'Acid Charcoal', stock: 4, sku: 'SB-006-CHR-XL' },
+      {
+        id: 'sb-usbc-2m-001-free',
+        size: 'Free Size',
+        color: 'White',
+        stock: 100,
+        sku: 'SB-USBC-2M-001',
+        price: 110,
+      },
     ],
-    stock: 37,
-    sku: 'SB-OVR-006',
-    rating: 4.9,
-    reviewCount: 22,
-    tags: ['acid wash', 'vintage', 'charcoal', 'oversized', 'bestseller'],
-    featured: true,
-    bestseller: true,
-    newArrival: false,
+    stock: 100,
+    sku: 'SB-USBC-2M-001',
+    rating: 0,
+    reviewCount: 0,
+    tags: [
+      'usb cable',
+      'usb c cable',
+      'charging cable',
+      'data cable',
+      '2m cable',
+    ],
+    featured: false,
+    bestseller: false,
+    newArrival: true,
     active: true,
-    details: {
-      fabric: '100% Mineral-Washed Heavyweight Cotton',
-      fit: 'Oversized Boxy Silhouette',
-      gsm: 260,
-      washCare: 'Wash with dark colors, dry flat',
-      modelDetails: 'Model is 6\'1" (185 cm) wearing size L',
-    },
-    createdAt: '2026-01-18T10:00:00.000Z',
-    updatedAt: '2026-02-19T12:00:00.000Z',
+    createdAt: '2026-08-24T10:30:00.000Z',
+    updatedAt: '2026-08-24T10:30:00.000Z',
   },
 ];
 
-export const SEED_COUPONS: Coupon[] = [
-  {
-    id: 'c-build15',
-    code: 'BUILD15',
-    description: '15% off on all Sanu Builds apparel',
-    discountType: 'percentage',
-    discountValue: 15,
-    minimumOrderValue: 40,
-    maximumDiscount: 30,
-    usageLimit: 500,
-    usedCount: 42,
-    expiresAt: '2026-12-31T23:59:59.000Z',
-    active: true,
-  },
-  {
-    id: 'c-sanu10',
-    code: 'SANU10',
-    description: '$10 instant flat discount on orders over $60',
-    discountType: 'fixed',
-    discountValue: 10,
-    minimumOrderValue: 60,
-    usageLimit: 1000,
-    usedCount: 118,
-    expiresAt: '2026-12-31T23:59:59.000Z',
-    active: true,
-  },
-  {
-    id: 'c-freeship',
-    code: 'FREESHIP',
-    description: 'Free expedited standard shipping',
-    discountType: 'fixed',
-    discountValue: 5,
-    minimumOrderValue: 30,
-    usageLimit: 2000,
-    usedCount: 240,
-    expiresAt: '2026-12-31T23:59:59.000Z',
-    active: true,
-  },
-];
+export const SEED_COUPONS: Coupon[] = [];
 
-export const SEED_REVIEWS: Review[] = [
-  {
-    id: 'rev-01',
-    userId: 'user_alex',
-    userName: 'Alex Rivers',
-    productId: 'sb-001',
-    rating: 5,
-    title: 'The neckline and heavyweight drape are unmatched.',
-    comment: 'I have tested over 10 different oversized tees from luxury streetwear brands. Sanu Builds 240 GSM is truly the holy grail. Collar does not bacon after 5 washes and the drop-shoulder sits perfectly.',
-    verifiedPurchase: true,
-    createdAt: '2026-02-14T14:32:00.000Z',
-  },
-  {
-    id: 'rev-02',
-    userId: 'user_devon',
-    userName: 'Devon Vance',
-    productId: 'sb-001',
-    rating: 5,
-    title: 'Perfect boxy fit for daily building sessions.',
-    comment: 'Great quality, heavy enough that it has structure but breathable. Fast delivery in 3 days. Definitely ordering 2 more.',
-    verifiedPurchase: true,
-    createdAt: '2026-02-18T09:12:00.000Z',
-  },
-  {
-    id: 'rev-03',
-    userId: 'user_marcus',
-    userName: 'Marcus Cole',
-    productId: 'sb-004',
-    rating: 5,
-    title: '280 GSM is serious quality.',
-    comment: 'The French Terry back loop feels premium against the skin. True to size for a boxy oversized look. Raw Slate color is even better in person.',
-    verifiedPurchase: true,
-    createdAt: '2026-02-21T18:45:00.000Z',
-  },
-];
+export const SEED_REVIEWS: Review[] = [];
 
 export const INITIAL_PRODUCTS = SEED_PRODUCTS;
 export const INITIAL_CATEGORIES = SEED_CATEGORIES;
 export const INITIAL_COUPONS = SEED_COUPONS;
 export const INITIAL_REVIEWS = SEED_REVIEWS;
 
-
 export async function seedInitialStoreData(): Promise<void> {
   try {
-    const { doc, writeBatch } = await import('firebase/firestore');
+    const {
+      doc,
+      writeBatch,
+    } = await import('firebase/firestore');
+
     const { db } = await import('../lib/firebase');
+
     const batch = writeBatch(db);
 
-    for (const cat of SEED_CATEGORIES) {
-      batch.set(doc(db, 'categories', cat.id), cat);
+    /*
+     * Remove old sample products created by the previous
+     * Sanu Builds demo catalog.
+     */
+    const oldSampleProductIds = [
+      'sb-001',
+      'sb-002',
+      'sb-003',
+      'sb-004',
+      'sb-005',
+      'sb-006',
+    ];
+
+    for (const productId of oldSampleProductIds) {
+      batch.delete(doc(db, 'products', productId));
     }
-    for (const prod of SEED_PRODUCTS) {
-      batch.set(doc(db, 'products', prod.id), prod);
+
+    /*
+     * Remove old sample categories.
+     */
+    const oldCategoryIds = [
+      'oversized',
+      'minimal',
+      'graphic',
+      'heavyweight',
+      'regular',
+    ];
+
+    for (const categoryId of oldCategoryIds) {
+      batch.delete(doc(db, 'categories', categoryId));
     }
+
+    /*
+     * Remove old demo coupons.
+     */
+    const oldCouponIds = [
+      'c-build15',
+      'c-sanu10',
+      'c-freeship',
+    ];
+
+    for (const couponId of oldCouponIds) {
+      batch.delete(doc(db, 'coupons', couponId));
+    }
+
+    /*
+     * Remove old demo reviews.
+     */
+    const oldReviewIds = [
+      'rev-01',
+      'rev-02',
+      'rev-03',
+    ];
+
+    for (const reviewId of oldReviewIds) {
+      batch.delete(doc(db, 'reviews', reviewId));
+    }
+
+    /*
+     * Add current categories.
+     */
+    for (const category of SEED_CATEGORIES) {
+      batch.set(
+        doc(db, 'categories', category.id),
+        category
+      );
+    }
+
+    /*
+     * Add current products.
+     */
+    for (const product of SEED_PRODUCTS) {
+      batch.set(
+        doc(db, 'products', product.id),
+        product
+      );
+    }
+
+    /*
+     * Add current coupons.
+     *
+     * Currently empty because no real coupon data
+     * was provided.
+     */
     for (const coupon of SEED_COUPONS) {
-      batch.set(doc(db, 'coupons', coupon.id), coupon);
+      batch.set(
+        doc(db, 'coupons', coupon.id),
+        coupon
+      );
     }
+
+    /*
+     * Add current reviews.
+     *
+     * Currently empty because no real customer
+     * reviews were provided.
+     */
     for (const review of SEED_REVIEWS) {
-      batch.set(doc(db, 'reviews', review.id), review);
+      batch.set(
+        doc(db, 'reviews', review.id),
+        review
+      );
     }
 
     await batch.commit();
-    console.log('Explicit store seeding finished successfully.');
+
+    console.log(
+      'Sanu Builds real product catalog seeded successfully.'
+    );
   } catch (err) {
-    console.warn('Could not complete explicit store seed:', err);
+    console.warn(
+      'Could not complete Sanu Builds catalog seed:',
+      err
+    );
   }
 }
-
