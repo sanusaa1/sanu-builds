@@ -149,9 +149,10 @@ export const SEED_PRODUCTS: Product[] = [
     discountPercentage: 0,
 
     images: [
-      `${IMAGE_BASE}?text=White+Round+Neck+T-Shirt`,
-      `${IMAGE_BASE}?text=White+T-Shirt+Front`,
-      `${IMAGE_BASE}?text=White+T-Shirt+Back`,
+      `https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/fa0a199a-b8f2-4c52-9dfc-20ff7679a889.jpg`,
+      `https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/427208ee-6e52-41d3-a6a1-33077a3f93a3.jpg`,
+      `https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/e8de00c0-fc84-449c-b13b-d5a336f3be8c.jpg`,
+      `https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/0c661610-6d36-4631-83cd-086bf0b7de0c.jpg`,
     ],
 
     sizes: ['M', 'L', 'XL'],
