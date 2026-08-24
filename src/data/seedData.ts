@@ -353,31 +353,26 @@ export const INITIAL_REVIEWS = SEED_REVIEWS;
 /* ============================================================================
    FIREBASE INITIAL STORE SYNC
 
-   Behaviour:
+   LOGIC:
 
-   1. Firebase document exists:
+   1. Firebase mein document already hai
       -> SKIP
-      -> Existing Firebase data is never overwritten.
+      -> Existing Firebase document ko overwrite nahi karega.
 
-   2. Firebase document missing:
-      -> CREATE seed document.
+   2. Firebase mein document nahi hai
+      -> CREATE karega.
 
-   3. Firebase catalog completely empty:
-      -> ALL seed categories/products/coupons/reviews are created.
+   3. Firebase catalog empty hai
+      -> Saare seed categories/products create honge.
 
-   4. Customer/public user:
-      -> READ only.
-      -> No write operation.
+   4. Firebase catalog partially populated hai
+      -> Sirf missing seed documents create honge.
 
-   5. Admin:
-      -> Missing seed documents are created.
+   5. Admin/customer/authentication ki requirement nahi hai.
 
    IMPORTANT:
-
-   Current Firestore rules allow catalog CREATE only to admins.
-   Therefore initial seeding must happen from an authenticated admin
-   session. This function waits for Firebase Auth restoration before
-   deciding whether the current user is an admin.
+   Firestore rules mein products/categories ke CREATE ko allow karna
+   zaroori hai agar ye client-side se automatically seed karna hai.
 ============================================================================ */
 
 export async function seedInitialStoreData(): Promise<void> {
@@ -386,155 +381,18 @@ export async function seedInitialStoreData(): Promise<void> {
       collection,
       doc,
       getDocs,
-      getDoc,
       writeBatch,
     } = await import('firebase/firestore');
 
-    const { onAuthStateChanged } = await import('firebase/auth');
     const { db } = await import('../lib/firebase');
-
-    const { getAuth } = await import('firebase/auth');
-
-    const auth = getAuth();
 
     console.log(
       'Sanu Builds: checking Firebase catalog...'
     );
 
-    /*
-     * ------------------------------------------------------------------------
-     * WAIT FOR FIREBASE AUTH TO FINISH RESTORING THE SESSION
-     * ------------------------------------------------------------------------
-     *
-     * auth.currentUser immediately check karne se problem ho sakti hai:
-     *
-     * Page load:
-     *   auth.currentUser === null
-     *
-     * Kuch milliseconds baad:
-     *   Firebase admin session restore kar deta hai.
-     *
-     * Isliye yahan auth state ka wait kiya ja raha hai.
-     */
-
-    const currentUser = await new Promise<any>((resolve) => {
-      let finished = false;
-
-      const unsubscribe = onAuthStateChanged(
-        auth,
-        (user) => {
-          if (finished) {
-            return;
-          }
-
-          finished = true;
-
-          unsubscribe();
-
-          resolve(user);
-        },
-        () => {
-          if (finished) {
-            return;
-          }
-
-          finished = true;
-
-          unsubscribe();
-
-          resolve(null);
-        }
-      );
-    });
-
-    /*
-     * ------------------------------------------------------------------------
-     * PUBLIC USER
-     * ------------------------------------------------------------------------
-     */
-
-    if (!currentUser) {
-      console.log(
-        'Sanu Builds: no authenticated admin session. Seed skipped.'
-      );
-
-      return;
-    }
-
-    /*
-     * ------------------------------------------------------------------------
-     * ADMIN DETECTION
-     * ------------------------------------------------------------------------
-     *
-     * Firestore rules ke saath match:
-     *
-     * 1. Direct admin email
-     * 2. users/{uid}.role === "admin"
-     */
-
-    const ADMIN_EMAILS = [
-      'admin@sanubuilds.com',
-      'anritvox@gmail.com',
-    ];
-
-    const currentEmail =
-      currentUser.email?.trim().toLowerCase() || '';
-
-    let isAdminUser =
-      ADMIN_EMAILS.includes(currentEmail);
-
-    /*
-     * Agar email direct admin list me nahi hai,
-     * users document ka role check karo.
-     */
-
-    if (!isAdminUser) {
-      try {
-        const userDocument = await getDoc(
-          doc(db, 'users', currentUser.uid)
-        );
-
-        if (
-          userDocument.exists() &&
-          userDocument.data()?.role === 'admin'
-        ) {
-          isAdminUser = true;
-        }
-      } catch (userError) {
-        console.warn(
-          'Sanu Builds: unable to verify admin role from users document.',
-          userError
-        );
-      }
-    }
-
-    /*
-     * ------------------------------------------------------------------------
-     * CUSTOMER / NORMAL AUTHENTICATED USER
-     * ------------------------------------------------------------------------
-     */
-
-    if (!isAdminUser) {
-      console.log(
-        'Sanu Builds: authenticated customer detected. Catalog seed skipped.'
-      );
-
-      return;
-    }
-
-    console.log(
-      `Sanu Builds: admin detected (${currentEmail || currentUser.uid}).`
-    );
-
-    console.log(
-      'Sanu Builds: checking missing Firebase catalog documents...'
-    );
-
-    /*
-     * ------------------------------------------------------------------------
-     * READ ALL EXISTING FIREBASE COLLECTIONS
-     * ------------------------------------------------------------------------
-     */
+    /* ------------------------------------------------------------------------
+       READ CURRENT FIREBASE CATALOG
+    ------------------------------------------------------------------------ */
 
     const [
       productsSnapshot,
@@ -559,11 +417,19 @@ export async function seedInitialStoreData(): Promise<void> {
       ),
     ]);
 
-    /*
-     * ------------------------------------------------------------------------
-     * EXISTING DOCUMENT IDS
-     * ------------------------------------------------------------------------
-     */
+    console.log(
+      'Sanu Builds: Firebase catalog counts:',
+      {
+        products: productsSnapshot.size,
+        categories: categoriesSnapshot.size,
+        coupons: couponsSnapshot.size,
+        reviews: reviewsSnapshot.size,
+      }
+    );
+
+    /* ------------------------------------------------------------------------
+       EXISTING DOCUMENT IDS
+    ------------------------------------------------------------------------ */
 
     const existingProductIds = new Set(
       productsSnapshot.docs.map(
@@ -589,11 +455,9 @@ export async function seedInitialStoreData(): Promise<void> {
       )
     );
 
-    /*
-     * ------------------------------------------------------------------------
-     * FIRESTORE BATCH
-     * ------------------------------------------------------------------------
-     */
+    /* ------------------------------------------------------------------------
+       CREATE BATCH
+    ------------------------------------------------------------------------ */
 
     const batch = writeBatch(db);
 
@@ -602,11 +466,15 @@ export async function seedInitialStoreData(): Promise<void> {
     let couponsAdded = 0;
     let reviewsAdded = 0;
 
-    /*
-     * ------------------------------------------------------------------------
-     * CATEGORIES
-     * ------------------------------------------------------------------------
-     */
+    /* ------------------------------------------------------------------------
+       CATEGORIES
+
+       Existing category:
+       -> SKIP
+
+       Missing category:
+       -> CREATE
+    ------------------------------------------------------------------------ */
 
     for (const category of SEED_CATEGORIES) {
       if (
@@ -637,11 +505,15 @@ export async function seedInitialStoreData(): Promise<void> {
       );
     }
 
-    /*
-     * ------------------------------------------------------------------------
-     * PRODUCTS
-     * ------------------------------------------------------------------------
-     */
+    /* ------------------------------------------------------------------------
+       PRODUCTS
+
+       Existing product:
+       -> SKIP
+
+       Missing product:
+       -> CREATE
+    ------------------------------------------------------------------------ */
 
     for (const product of SEED_PRODUCTS) {
       if (
@@ -672,11 +544,12 @@ export async function seedInitialStoreData(): Promise<void> {
       );
     }
 
-    /*
-     * ------------------------------------------------------------------------
-     * COUPONS
-     * ------------------------------------------------------------------------
-     */
+    /* ------------------------------------------------------------------------
+       COUPONS
+
+       Currently SEED_COUPONS empty hai.
+       Future mein coupon add karoge to missing coupon create hoga.
+    ------------------------------------------------------------------------ */
 
     for (const coupon of SEED_COUPONS) {
       if (
@@ -707,11 +580,12 @@ export async function seedInitialStoreData(): Promise<void> {
       );
     }
 
-    /*
-     * ------------------------------------------------------------------------
-     * REVIEWS
-     * ------------------------------------------------------------------------
-     */
+    /* ------------------------------------------------------------------------
+       REVIEWS
+
+       Currently SEED_REVIEWS empty hai.
+       Future mein review seed add karoge to missing review create hoga.
+    ------------------------------------------------------------------------ */
 
     for (const review of SEED_REVIEWS) {
       if (
@@ -742,11 +616,9 @@ export async function seedInitialStoreData(): Promise<void> {
       );
     }
 
-    /*
-     * ------------------------------------------------------------------------
-     * CHECK IF ANYTHING NEEDS TO BE CREATED
-     * ------------------------------------------------------------------------
-     */
+    /* ------------------------------------------------------------------------
+       NOTHING TO ADD
+    ------------------------------------------------------------------------ */
 
     const totalAdded =
       productsAdded +
@@ -762,11 +634,9 @@ export async function seedInitialStoreData(): Promise<void> {
       return;
     }
 
-    /*
-     * ------------------------------------------------------------------------
-     * COMMIT EVERYTHING
-     * ------------------------------------------------------------------------
-     */
+    /* ------------------------------------------------------------------------
+       UPLOAD MISSING DATA
+    ------------------------------------------------------------------------ */
 
     console.log(
       'Sanu Builds: uploading missing seed data to Firebase...',
@@ -775,10 +645,15 @@ export async function seedInitialStoreData(): Promise<void> {
         categoriesAdded,
         couponsAdded,
         reviewsAdded,
+        totalAdded,
       }
     );
 
     await batch.commit();
+
+    /* ------------------------------------------------------------------------
+       SUCCESS
+    ------------------------------------------------------------------------ */
 
     console.log(
       'Sanu Builds: Firebase initial catalog sync completed successfully.',
@@ -790,6 +665,7 @@ export async function seedInitialStoreData(): Promise<void> {
         totalAdded,
       }
     );
+
   } catch (error: any) {
     console.warn(
       'Sanu Builds: Firebase initial catalog sync failed:',
