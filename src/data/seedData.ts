@@ -9,7 +9,7 @@ export const SEED_CATEGORIES: Category[] = [
     slug: 'tshirts',
     description:
       'Everyday Sanu Builds T-shirts with clean fits and comfortable fabrics.',
-    image: `https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/fa0a199a-b8f2-4c52-9dfc-20ff7679a889.jpg``,
+    image: `https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/fa0a199a-b8f2-4c52-9dfc-20ff7679a889.jpg`,
     featured: true,
     productCount: 2,
   },
