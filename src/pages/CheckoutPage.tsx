@@ -3,39 +3,58 @@ import {
   ShieldCheck,
   Truck,
   CreditCard,
-  Check,
   Lock,
-  ArrowRight,
-  MapPin,
   Plus,
-  AlertCircle,
-  Clock,
   Sparkles,
 } from 'lucide-react';
+
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { Address, PaymentMethod } from '../types';
-import { getUserAddresses, saveUserAddress } from '../services/userService';
+import {
+  getUserAddresses,
+  saveUserAddress,
+} from '../services/userService';
 import { createOrder } from '../services/orderService';
 
 interface CheckoutPageProps {
   onNavigate: (route: string, params?: Record<string, string>) => void;
 }
 
-export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate }) => {
-  const { cart, subtotal, discount, shippingFee, tax, total, appliedCoupon, clearCart } = useCart();
+export const CheckoutPage: React.FC<CheckoutPageProps> = ({
+  onNavigate,
+}) => {
+  const {
+    cart,
+    subtotal,
+    discount,
+    shippingFee,
+    tax,
+    total,
+    appliedCoupon,
+    clearCart,
+  } = useCart();
+
   const { currentUser, userProfile } = useAuth();
   const { success, error: toastError } = useToast();
 
   const [savedAddresses, setSavedAddresses] = useState<Address[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string>('');
-  const [isAddingNewAddress, setIsAddingNewAddress] = useState<boolean>(false);
-  const [deliveryMethod, setDeliveryMethod] = useState<'standard' | 'express'>('standard');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card');
-  const [placingOrder, setPlacingOrder] = useState<boolean>(false);
+  const [isAddingNewAddress, setIsAddingNewAddress] =
+    useState<boolean>(false);
 
-  // Address form fields
+  const [deliveryMethod, setDeliveryMethod] = useState<
+    'standard' | 'express'
+  >('standard');
+
+  const [paymentMethod, setPaymentMethod] =
+    useState<PaymentMethod>('card');
+
+  const [placingOrder, setPlacingOrder] =
+    useState<boolean>(false);
+
+  // Address form
   const [addressForm, setAddressForm] = useState<Omit<Address, 'id'>>({
     fullName: userProfile?.name || '',
     phone: userProfile?.phone || '',
@@ -49,12 +68,22 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate }) => {
     isDefault: true,
   });
 
-  // Card / Payment mock form fields
-  const [cardNumber, setCardNumber] = useState('4242 •••• •••• 4242');
-  const [cardExpiry, setCardExpiry] = useState('12/28');
-  const [cardCvc, setCardCvc] = useState('888');
-  const [upiId, setUpiId] = useState('builder@okaxis');
+  // Payment mock fields
+  const [cardNumber, setCardNumber] =
+    useState('4242 •••• •••• 4242');
 
+  const [cardExpiry, setCardExpiry] =
+    useState('12/28');
+
+  const [cardCvc, setCardCvc] =
+    useState('888');
+
+  const [upiId, setUpiId] =
+    useState('builder@okaxis');
+
+  /*
+   * Load addresses
+   */
   useEffect(() => {
     if (cart.length === 0) {
       onNavigate('/cart');
@@ -62,112 +91,320 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate }) => {
     }
 
     if (currentUser) {
-      getUserAddresses(currentUser.uid).then((addrs) => {
-        setSavedAddresses(addrs);
-        if (addrs.length > 0) {
-          const def = addrs.find((a) => a.isDefault) || addrs[0];
-          setSelectedAddressId(def.id);
-        } else {
+      getUserAddresses(currentUser.uid)
+        .then((addrs) => {
+          setSavedAddresses(addrs);
+
+          if (addrs.length > 0) {
+            const defaultAddress =
+              addrs.find((address) => address.isDefault) ||
+              addrs[0];
+
+            setSelectedAddressId(defaultAddress.id);
+            setIsAddingNewAddress(false);
+          } else {
+            setIsAddingNewAddress(true);
+          }
+        })
+        .catch((error) => {
+          console.error(
+            'Error loading user addresses:',
+            error
+          );
+
+          toastError(
+            'Could not load saved addresses.'
+          );
+
           setIsAddingNewAddress(true);
-        }
-      });
+        });
     } else {
       setIsAddingNewAddress(true);
     }
-  }, [currentUser, cart.length]);
+  }, [currentUser, cart.length, onNavigate, toastError]);
 
-  const handleSaveNewAddress = async (e: React.FormEvent) => {
+  /*
+   * Keep address form synced with user profile
+   */
+  useEffect(() => {
+    if (!userProfile) return;
+
+    setAddressForm((prev) => ({
+      ...prev,
+      fullName: prev.fullName || userProfile.name || '',
+      phone: prev.phone || userProfile.phone || '',
+    }));
+  }, [userProfile]);
+
+  /*
+   * Save new address
+   */
+  const handleSaveNewAddress = async (
+    e: React.FormEvent
+  ) => {
     e.preventDefault();
-    if (!addressForm.fullName || !addressForm.phone || !addressForm.addressLine1 || !addressForm.city || !addressForm.postalCode) {
-      toastError('Please fill out all required address fields.');
+
+    if (
+      !addressForm.fullName ||
+      !addressForm.phone ||
+      !addressForm.addressLine1 ||
+      !addressForm.city ||
+      !addressForm.state ||
+      !addressForm.postalCode
+    ) {
+      toastError(
+        'Please fill out all required address fields.'
+      );
       return;
     }
 
     if (currentUser) {
       try {
-        const saved = await saveUserAddress(currentUser.uid, addressForm);
-        setSavedAddresses((prev) => [...prev, saved]);
+        const saved = await saveUserAddress(
+          currentUser.uid,
+          addressForm
+        );
+
+        setSavedAddresses((prev) => [
+          ...prev,
+          saved,
+        ]);
+
         setSelectedAddressId(saved.id);
         setIsAddingNewAddress(false);
+
         success('Address saved successfully.');
-      } catch (err) {
-        console.error(err);
+      } catch (error) {
+        console.error(
+          'Error saving address:',
+          error
+        );
+
+        toastError(
+          'Could not save address. Please try again.'
+        );
       }
     } else {
       // Guest address
       setSelectedAddressId('guest_temp');
       setIsAddingNewAddress(false);
+
+      success('Delivery address selected.');
     }
   };
 
+  /*
+   * Place order
+   */
   const handlePlaceOrder = async () => {
-    // Validate address
+    /*
+     * Validate delivery address
+     */
     let activeAddress: Address;
-    if (isAddingNewAddress || selectedAddressId === 'guest_temp' || savedAddresses.length === 0) {
-      if (!addressForm.fullName || !addressForm.phone || !addressForm.addressLine1 || !addressForm.city || !addressForm.postalCode) {
-        toastError('Please provide a complete delivery address.');
+
+    if (
+      isAddingNewAddress ||
+      selectedAddressId === 'guest_temp' ||
+      savedAddresses.length === 0
+    ) {
+      if (
+        !addressForm.fullName ||
+        !addressForm.phone ||
+        !addressForm.addressLine1 ||
+        !addressForm.city ||
+        !addressForm.state ||
+        !addressForm.postalCode
+      ) {
+        toastError(
+          'Please provide a complete delivery address.'
+        );
         return;
       }
-      activeAddress = { ...addressForm, id: 'addr_temp_' + Date.now() };
+
+      activeAddress = {
+        ...addressForm,
+        id: `addr_temp_${Date.now()}`,
+      };
     } else {
-      const found = savedAddresses.find((a) => a.id === selectedAddressId);
-      if (!found) {
-        toastError('Please select a valid delivery address.');
+      const foundAddress = savedAddresses.find(
+        (address) =>
+          address.id === selectedAddressId
+      );
+
+      if (!foundAddress) {
+        toastError(
+          'Please select a valid delivery address.'
+        );
         return;
       }
-      activeAddress = found;
+
+      activeAddress = foundAddress;
+    }
+
+    /*
+     * Prevent duplicate clicks
+     */
+    if (placingOrder) {
+      return;
     }
 
     setPlacingOrder(true);
 
     try {
-      // Adjusted shipping fee if express chosen
-      const finalShipping = deliveryMethod === 'express' ? shippingFee + 8 : shippingFee;
-      const finalTotal = Math.round((subtotal - discount + finalShipping + tax) * 100) / 100;
+      /*
+       * Calculate shipping
+       */
+      const finalShipping =
+        deliveryMethod === 'express'
+          ? shippingFee + 8
+          : shippingFee;
 
-      const orderResult = await createOrder({
+      /*
+       * Calculate final order total
+       */
+      const finalTotal =
+        Math.round(
+          (
+            subtotal -
+            discount +
+            finalShipping +
+            tax
+          ) * 100
+        ) / 100;
+
+      /*
+       * IMPORTANT:
+       *
+       * Firestore does NOT accept undefined.
+       *
+       * So couponCode uses null when there
+       * is no coupon.
+       */
+      const couponCode =
+        appliedCoupon?.code ?? null;
+
+      /*
+       * Make sure all order fields have valid values.
+       */
+      const orderData = {
         userId: currentUser?.uid || 'guest',
-        customerName: activeAddress.fullName,
-        customerEmail: currentUser?.email || 'guest@sanubuilds.com',
-        customerPhone: activeAddress.phone,
-        items: cart,
-        shippingAddress: activeAddress,
-        subtotal,
-        discount,
-        couponCode: appliedCoupon?.code,
-        shippingFee: finalShipping,
-        tax,
-        total: finalTotal,
-        paymentMethod,
-        paymentStatus: paymentMethod === 'cod' ? 'pending' : 'paid',
-        orderStatus: 'confirmed',
-        carrierName: deliveryMethod === 'express' ? 'FedEx Priority Air' : 'Expedited Standard Ground',
-        estimatedDelivery: deliveryMethod === 'express' ? '1 - 2 Business Days' : '3 - 5 Business Days',
-      });
 
+        customerName:
+          activeAddress.fullName,
+
+        customerEmail:
+          currentUser?.email ||
+          'guest@sanubuilds.com',
+
+        customerPhone:
+          activeAddress.phone,
+
+        items: cart,
+
+        shippingAddress: activeAddress,
+
+        subtotal: Number(subtotal) || 0,
+
+        discount: Number(discount) || 0,
+
+        couponCode,
+
+        shippingFee:
+          Number(finalShipping) || 0,
+
+        tax: Number(tax) || 0,
+
+        total:
+          Number(finalTotal) || 0,
+
+        paymentMethod,
+
+        paymentStatus:
+          paymentMethod === 'cod'
+            ? 'pending'
+            : 'paid',
+
+        orderStatus: 'confirmed',
+
+        carrierName:
+          deliveryMethod === 'express'
+            ? 'FedEx Priority Air'
+            : 'Expedited Standard Ground',
+
+        estimatedDelivery:
+          deliveryMethod === 'express'
+            ? '1 - 2 Business Days'
+            : '3 - 5 Business Days',
+      };
+
+      console.log(
+        'Creating order:',
+        orderData
+      );
+
+      /*
+       * Create Firestore order
+       */
+      const orderResult =
+        await createOrder(orderData);
+
+      /*
+       * Clear cart only after successful
+       * Firestore order creation.
+       */
       await clearCart();
-      success(`Order #${orderResult.orderNumber} placed successfully!`);
-      onNavigate(`/order-success/${orderResult.id}`);
-    } catch (err) {
-      console.error('Error placing order:', err);
-      toastError('Could not process order. Please check connection and try again.');
+
+      success(
+        `Order #${orderResult.orderNumber} placed successfully!`
+      );
+
+      onNavigate(
+        `/order-success/${orderResult.id}`
+      );
+    } catch (error) {
+      console.error(
+        'Error placing order:',
+        error
+      );
+
+      toastError(
+        'Could not process order. Please check connection and try again.'
+      );
     } finally {
       setPlacingOrder(false);
     }
   };
 
+  /*
+   * Express shipping total
+   */
+  const displayTotal =
+    deliveryMethod === 'express'
+      ? total + 8
+      : total;
+
+  /*
+   * Empty cart protection
+   */
+  if (cart.length === 0) {
+    return null;
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
       {/* Checkout Header */}
       <div className="border-b border-neutral-200 pb-4 flex items-center justify-between">
         <div>
           <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">
             Secure 256-Bit SSL Checkout
           </span>
+
           <h1 className="text-2xl sm:text-3xl font-black text-neutral-900 tracking-tight uppercase mt-0.5">
             Checkout
           </h1>
         </div>
+
         <div className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200 text-xs font-bold">
           <Lock className="w-3.5 h-3.5" />
           <span>Encrypted Payment</span>
@@ -175,369 +412,696 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate }) => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left Column: Steps (8 Cols) */}
+
+        {/* LEFT COLUMN */}
         <div className="lg:col-span-8 space-y-8">
-          {/* Step 1: Shipping Address */}
+
+          {/* STEP 1 - ADDRESS */}
           <div className="bg-white rounded-xl border border-neutral-200 p-6 space-y-5 shadow-xs">
+
             <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
+
               <div className="flex items-center gap-2">
+
                 <div className="w-6 h-6 rounded-full bg-neutral-950 text-white flex items-center justify-center text-xs font-bold">
                   1
                 </div>
+
                 <h3 className="text-sm font-bold uppercase tracking-wider text-neutral-900">
                   Delivery Address
                 </h3>
+
               </div>
-              {savedAddresses.length > 0 && !isAddingNewAddress && (
-                <button
-                  type="button"
-                  onClick={() => setIsAddingNewAddress(true)}
-                  className="text-xs font-bold text-neutral-900 hover:underline flex items-center gap-1"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Add New Address</span>
-                </button>
-              )}
+
+              {savedAddresses.length > 0 &&
+                !isAddingNewAddress && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setIsAddingNewAddress(true)
+                    }
+                    className="text-xs font-bold text-neutral-900 hover:underline flex items-center gap-1"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add New Address</span>
+                  </button>
+                )}
+
             </div>
 
-            {/* Saved Addresses Selector */}
-            {savedAddresses.length > 0 && !isAddingNewAddress ? (
+            {/* SAVED ADDRESSES */}
+            {savedAddresses.length > 0 &&
+            !isAddingNewAddress ? (
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
                 {savedAddresses.map((addr) => (
+
                   <div
                     key={addr.id}
-                    onClick={() => setSelectedAddressId(addr.id)}
+                    onClick={() =>
+                      setSelectedAddressId(addr.id)
+                    }
                     className={`p-4 rounded-xl border-2 cursor-pointer transition-all space-y-1 ${
                       selectedAddressId === addr.id
                         ? 'border-neutral-950 bg-neutral-50/70 shadow-xs'
                         : 'border-neutral-200 hover:border-neutral-400'
                     }`}
                   >
+
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-neutral-900">{addr.fullName}</span>
+
+                      <span className="text-xs font-bold text-neutral-900">
+                        {addr.fullName}
+                      </span>
+
                       {addr.isDefault && (
                         <span className="text-[10px] font-bold uppercase bg-neutral-200 px-1.5 py-0.5 rounded text-neutral-800">
                           Default
                         </span>
                       )}
+
                     </div>
+
                     <p className="text-xs text-neutral-600 leading-relaxed">
-                      {addr.addressLine1} {addr.addressLine2 ? `, ${addr.addressLine2}` : ''}
+                      {addr.addressLine1}
+
+                      {addr.addressLine2
+                        ? `, ${addr.addressLine2}`
+                        : ''}
                     </p>
+
                     <p className="text-xs text-neutral-600">
-                      {addr.city}, {addr.state} {addr.postalCode}
+                      {addr.city}, {addr.state}{' '}
+                      {addr.postalCode}
                     </p>
-                    <p className="text-xs text-neutral-500 font-mono">Phone: {addr.phone}</p>
+
+                    <p className="text-xs text-neutral-500 font-mono">
+                      Phone: {addr.phone}
+                    </p>
+
                   </div>
+
                 ))}
+
               </div>
+
             ) : (
-              /* New Address Form */
-              <form onSubmit={handleSaveNewAddress} className="space-y-4">
+
+              /* NEW ADDRESS FORM */
+
+              <form
+                onSubmit={handleSaveNewAddress}
+                className="space-y-4"
+              >
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
                   <div>
-                    <label className="block text-xs font-bold text-neutral-700 mb-1">Full Name *</label>
+                    <label className="block text-xs font-bold text-neutral-700 mb-1">
+                      Full Name *
+                    </label>
+
                     <input
                       type="text"
                       required
                       placeholder="e.g. Alex Rivers"
                       value={addressForm.fullName}
-                      onChange={(e) => setAddressForm({ ...addressForm, fullName: e.target.value })}
+                      onChange={(e) =>
+                        setAddressForm({
+                          ...addressForm,
+                          fullName: e.target.value,
+                        })
+                      }
                       className="w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-300 rounded-lg focus:outline-none focus:border-neutral-900"
                     />
                   </div>
+
                   <div>
-                    <label className="block text-xs font-bold text-neutral-700 mb-1">Phone Number *</label>
+                    <label className="block text-xs font-bold text-neutral-700 mb-1">
+                      Phone Number *
+                    </label>
+
                     <input
                       type="tel"
                       required
                       placeholder="e.g. +1 (555) 019-2834"
                       value={addressForm.phone}
-                      onChange={(e) => setAddressForm({ ...addressForm, phone: e.target.value })}
+                      onChange={(e) =>
+                        setAddressForm({
+                          ...addressForm,
+                          phone: e.target.value,
+                        })
+                      }
                       className="w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-300 rounded-lg focus:outline-none focus:border-neutral-900"
                     />
                   </div>
+
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-neutral-700 mb-1">Street Address *</label>
+                  <label className="block text-xs font-bold text-neutral-700 mb-1">
+                    Street Address *
+                  </label>
+
                   <input
                     type="text"
                     required
                     placeholder="e.g. 742 Evergreen Terrace, Apt 4B"
                     value={addressForm.addressLine1}
-                    onChange={(e) => setAddressForm({ ...addressForm, addressLine1: e.target.value })}
+                    onChange={(e) =>
+                      setAddressForm({
+                        ...addressForm,
+                        addressLine1:
+                          e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-300 rounded-lg focus:outline-none focus:border-neutral-900"
                   />
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+
                   <div>
-                    <label className="block text-xs font-bold text-neutral-700 mb-1">City *</label>
+                    <label className="block text-xs font-bold text-neutral-700 mb-1">
+                      City *
+                    </label>
+
                     <input
                       type="text"
                       required
                       placeholder="City"
                       value={addressForm.city}
-                      onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
+                      onChange={(e) =>
+                        setAddressForm({
+                          ...addressForm,
+                          city: e.target.value,
+                        })
+                      }
                       className="w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-300 rounded-lg focus:outline-none focus:border-neutral-900"
                     />
                   </div>
+
                   <div>
-                    <label className="block text-xs font-bold text-neutral-700 mb-1">State *</label>
+                    <label className="block text-xs font-bold text-neutral-700 mb-1">
+                      State *
+                    </label>
+
                     <input
                       type="text"
                       required
                       placeholder="State"
                       value={addressForm.state}
-                      onChange={(e) => setAddressForm({ ...addressForm, state: e.target.value })}
+                      onChange={(e) =>
+                        setAddressForm({
+                          ...addressForm,
+                          state: e.target.value,
+                        })
+                      }
                       className="w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-300 rounded-lg focus:outline-none focus:border-neutral-900"
                     />
                   </div>
+
                   <div>
-                    <label className="block text-xs font-bold text-neutral-700 mb-1">Postal Code *</label>
+                    <label className="block text-xs font-bold text-neutral-700 mb-1">
+                      Postal Code *
+                    </label>
+
                     <input
                       type="text"
                       required
                       placeholder="Postal Code"
                       value={addressForm.postalCode}
-                      onChange={(e) => setAddressForm({ ...addressForm, postalCode: e.target.value })}
+                      onChange={(e) =>
+                        setAddressForm({
+                          ...addressForm,
+                          postalCode:
+                            e.target.value,
+                        })
+                      }
                       className="w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-300 rounded-lg focus:outline-none focus:border-neutral-900"
                     />
                   </div>
+
                 </div>
 
                 {savedAddresses.length > 0 && (
                   <div className="flex justify-end gap-2 pt-2">
+
                     <button
                       type="button"
-                      onClick={() => setIsAddingNewAddress(false)}
+                      onClick={() =>
+                        setIsAddingNewAddress(false)
+                      }
                       className="px-4 py-2 text-xs font-semibold text-neutral-600 hover:text-neutral-900"
                     >
                       Use Saved Address
                     </button>
+
                     <button
                       type="submit"
                       className="px-4 py-2 bg-neutral-900 text-white rounded-lg text-xs font-bold hover:bg-black"
                     >
                       Save & Use
                     </button>
+
                   </div>
                 )}
+
               </form>
             )}
+
           </div>
 
-          {/* Step 2: Delivery Method */}
+          {/* STEP 2 - DELIVERY */}
           <div className="bg-white rounded-xl border border-neutral-200 p-6 space-y-4 shadow-xs">
+
             <div className="flex items-center gap-2 border-b border-neutral-100 pb-3">
+
               <div className="w-6 h-6 rounded-full bg-neutral-950 text-white flex items-center justify-center text-xs font-bold">
                 2
               </div>
+
               <h3 className="text-sm font-bold uppercase tracking-wider text-neutral-900">
                 Delivery Method
               </h3>
+
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div
-                onClick={() => setDeliveryMethod('standard')}
-                className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${
+
+              {/* STANDARD */}
+              <button
+                type="button"
+                onClick={() =>
+                  setDeliveryMethod('standard')
+                }
+                className={`text-left p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${
                   deliveryMethod === 'standard'
                     ? 'border-neutral-950 bg-neutral-50'
                     : 'border-neutral-200 hover:border-neutral-400'
                 }`}
               >
-                <div>
-                  <span className="text-xs font-bold text-neutral-900 block">Standard Tracked Courier</span>
-                  <span className="text-[11px] text-neutral-500">3 - 5 Business Days</span>
-                </div>
-                <span className="text-xs font-black text-neutral-950">
-                  {shippingFee === 0 ? 'FREE' : `$${shippingFee.toFixed(2)}`}
-                </span>
-              </div>
 
-              <div
-                onClick={() => setDeliveryMethod('express')}
-                className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${
+                <div>
+                  <span className="text-xs font-bold text-neutral-900 block">
+                    Standard Tracked Courier
+                  </span>
+
+                  <span className="text-[11px] text-neutral-500">
+                    3 - 5 Business Days
+                  </span>
+                </div>
+
+                <span className="text-xs font-black text-neutral-950">
+                  {shippingFee === 0
+                    ? 'FREE'
+                    : `$${shippingFee.toFixed(2)}`}
+                </span>
+
+              </button>
+
+              {/* EXPRESS */}
+              <button
+                type="button"
+                onClick={() =>
+                  setDeliveryMethod('express')
+                }
+                className={`text-left p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${
                   deliveryMethod === 'express'
                     ? 'border-neutral-950 bg-neutral-50'
                     : 'border-neutral-200 hover:border-neutral-400'
                 }`}
               >
+
                 <div>
-                  <span className="text-xs font-bold text-neutral-900 block">FedEx Priority Air</span>
-                  <span className="text-[11px] text-neutral-500">1 - 2 Business Days</span>
+                  <span className="text-xs font-bold text-neutral-900 block">
+                    FedEx Priority Air
+                  </span>
+
+                  <span className="text-[11px] text-neutral-500">
+                    1 - 2 Business Days
+                  </span>
                 </div>
-                <span className="text-xs font-black text-neutral-950">+$8.00</span>
-              </div>
+
+                <span className="text-xs font-black text-neutral-950">
+                  +$8.00
+                </span>
+
+              </button>
+
             </div>
           </div>
 
-          {/* Step 3: Payment Method */}
+          {/* STEP 3 - PAYMENT */}
           <div className="bg-white rounded-xl border border-neutral-200 p-6 space-y-4 shadow-xs">
+
             <div className="flex items-center gap-2 border-b border-neutral-100 pb-3">
+
               <div className="w-6 h-6 rounded-full bg-neutral-950 text-white flex items-center justify-center text-xs font-bold">
                 3
               </div>
+
               <h3 className="text-sm font-bold uppercase tracking-wider text-neutral-900">
                 Payment Option
               </h3>
+
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+
               {[
-                { id: 'card', label: 'Credit Card', icon: CreditCard },
-                { id: 'razorpay', label: 'Razorpay / Net', icon: Sparkles },
-                { id: 'upi', label: 'UPI / QR', icon: Lock },
-                { id: 'cod', label: 'Cash On Delivery', icon: Truck },
-              ].map((m) => (
+                {
+                  id: 'card',
+                  label: 'Credit Card',
+                  icon: CreditCard,
+                },
+                {
+                  id: 'razorpay',
+                  label: 'Razorpay / Net',
+                  icon: Sparkles,
+                },
+                {
+                  id: 'upi',
+                  label: 'UPI / QR',
+                  icon: Lock,
+                },
+                {
+                  id: 'cod',
+                  label: 'Cash On Delivery',
+                  icon: Truck,
+                },
+              ].map((method) => (
+
                 <button
-                  key={m.id}
+                  key={method.id}
                   type="button"
-                  onClick={() => setPaymentMethod(m.id as PaymentMethod)}
+                  onClick={() =>
+                    setPaymentMethod(
+                      method.id as PaymentMethod
+                    )
+                  }
                   className={`p-3 rounded-lg border-2 text-left transition-all flex flex-col items-center justify-center gap-1.5 ${
-                    paymentMethod === m.id
+                    paymentMethod === method.id
                       ? 'border-neutral-950 bg-neutral-950 text-white shadow-xs'
                       : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-400'
                   }`}
                 >
-                  <m.icon className="w-4 h-4" />
-                  <span className="text-[11px] font-bold">{m.label}</span>
+
+                  <method.icon className="w-4 h-4" />
+
+                  <span className="text-[11px] font-bold text-center">
+                    {method.label}
+                  </span>
+
                 </button>
+
               ))}
+
             </div>
 
-            {/* Payment Fields Simulator */}
+            {/* CARD */}
             {paymentMethod === 'card' && (
+
               <div className="p-4 bg-neutral-50 rounded-xl border border-neutral-200 space-y-3">
+
                 <div>
-                  <label className="block text-[11px] font-bold text-neutral-600 mb-1">Card Number</label>
+                  <label className="block text-[11px] font-bold text-neutral-600 mb-1">
+                    Card Number
+                  </label>
+
                   <input
                     type="text"
                     value={cardNumber}
-                    onChange={(e) => setCardNumber(e.target.value)}
+                    onChange={(e) =>
+                      setCardNumber(e.target.value)
+                    }
                     className="w-full px-3 py-2 text-xs bg-white border border-neutral-300 rounded-lg font-mono focus:outline-none"
                   />
                 </div>
+
                 <div className="grid grid-cols-2 gap-3">
+
                   <div>
-                    <label className="block text-[11px] font-bold text-neutral-600 mb-1">Expiry Date</label>
+                    <label className="block text-[11px] font-bold text-neutral-600 mb-1">
+                      Expiry Date
+                    </label>
+
                     <input
                       type="text"
                       value={cardExpiry}
-                      onChange={(e) => setCardExpiry(e.target.value)}
+                      onChange={(e) =>
+                        setCardExpiry(e.target.value)
+                      }
                       className="w-full px-3 py-2 text-xs bg-white border border-neutral-300 rounded-lg font-mono focus:outline-none"
                     />
                   </div>
+
                   <div>
-                    <label className="block text-[11px] font-bold text-neutral-600 mb-1">CVV</label>
+                    <label className="block text-[11px] font-bold text-neutral-600 mb-1">
+                      CVV
+                    </label>
+
                     <input
                       type="password"
                       value={cardCvc}
-                      onChange={(e) => setCardCvc(e.target.value)}
+                      onChange={(e) =>
+                        setCardCvc(e.target.value)
+                      }
                       className="w-full px-3 py-2 text-xs bg-white border border-neutral-300 rounded-lg font-mono focus:outline-none"
                     />
                   </div>
+
                 </div>
+
               </div>
             )}
 
+            {/* UPI */}
             {paymentMethod === 'upi' && (
+
               <div className="p-4 bg-neutral-50 rounded-xl border border-neutral-200 space-y-2">
-                <label className="block text-[11px] font-bold text-neutral-600">Virtual Payment Address (VPA)</label>
+
+                <label className="block text-[11px] font-bold text-neutral-600">
+                  Virtual Payment Address (VPA)
+                </label>
+
                 <input
                   type="text"
                   value={upiId}
-                  onChange={(e) => setUpiId(e.target.value)}
+                  onChange={(e) =>
+                    setUpiId(e.target.value)
+                  }
                   className="w-full px-3 py-2 text-xs bg-white border border-neutral-300 rounded-lg font-mono focus:outline-none"
                 />
+
               </div>
             )}
+
+            {/* RAZORPAY */}
+            {paymentMethod === 'razorpay' && (
+
+              <div className="p-4 bg-neutral-50 rounded-xl border border-neutral-200">
+
+                <div className="flex items-center gap-2 text-xs text-neutral-600">
+
+                  <Sparkles className="w-4 h-4 text-neutral-900" />
+
+                  <span>
+                    Razorpay / Net Banking payment will
+                    be processed securely.
+                  </span>
+
+                </div>
+
+              </div>
+            )}
+
+            {/* COD */}
+            {paymentMethod === 'cod' && (
+
+              <div className="p-4 bg-neutral-50 rounded-xl border border-neutral-200">
+
+                <div className="flex items-center gap-2 text-xs text-neutral-600">
+
+                  <Truck className="w-4 h-4 text-neutral-900" />
+
+                  <span>
+                    Pay when your order is delivered.
+                  </span>
+
+                </div>
+
+              </div>
+            )}
+
           </div>
+
         </div>
 
-        {/* Right Column: Order Summary (4 Cols) */}
+        {/* RIGHT COLUMN */}
         <div className="lg:col-span-4 space-y-4 sticky top-24">
+
           <div className="bg-white rounded-xl border border-neutral-200 p-5 space-y-4 shadow-xs">
+
             <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-900 border-b border-neutral-100 pb-3">
               Order Review ({cart.length} styles)
             </h3>
 
-            {/* Compact item list */}
+            {/* ITEMS */}
             <div className="max-h-48 overflow-y-auto space-y-2 divide-y divide-neutral-100 pr-1">
+
               {cart.map((item) => (
-                <div key={item.id} className="pt-2 first:pt-0 flex items-center justify-between gap-3 text-xs">
+
+                <div
+                  key={item.id}
+                  className="pt-2 first:pt-0 flex items-center justify-between gap-3 text-xs"
+                >
+
                   <img
                     src={item.image}
                     alt={item.name}
+                    referrerPolicy="no-referrer"
                     className="w-9 h-9 rounded object-cover border border-neutral-200 shrink-0"
                   />
+
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-neutral-900 truncate">{item.name}</p>
+
+                    <p className="font-semibold text-neutral-900 truncate">
+                      {item.name}
+                    </p>
+
                     <p className="text-[11px] text-neutral-400">
                       {item.size} • Qty {item.quantity}
                     </p>
+
                   </div>
+
                   <span className="font-bold text-neutral-900 shrink-0">
                     ${(item.price * item.quantity).toFixed(2)}
                   </span>
+
                 </div>
+
               ))}
+
             </div>
 
-            {/* Calculations */}
+            {/* CALCULATIONS */}
             <div className="space-y-2 text-xs text-neutral-600 border-t border-neutral-100 pt-3">
+
               <div className="flex justify-between">
                 <span>Subtotal</span>
-                <span className="font-semibold text-neutral-900">${subtotal.toFixed(2)}</span>
+
+                <span className="font-semibold text-neutral-900">
+                  ${subtotal.toFixed(2)}
+                </span>
               </div>
+
               {discount > 0 && (
+
                 <div className="flex justify-between text-emerald-600 font-medium">
-                  <span>Discount ({appliedCoupon?.code})</span>
-                  <span>-${discount.toFixed(2)}</span>
+
+                  <span>
+                    Discount
+                    {appliedCoupon?.code
+                      ? ` (${appliedCoupon.code})`
+                      : ''}
+                  </span>
+
+                  <span>
+                    -${discount.toFixed(2)}
+                  </span>
+
                 </div>
               )}
+
               <div className="flex justify-between">
-                <span>Shipping ({deliveryMethod === 'express' ? 'Priority Air' : 'Standard'})</span>
+
+                <span>
+                  Shipping (
+                  {deliveryMethod === 'express'
+                    ? 'Priority Air'
+                    : 'Standard'}
+                  )
+                </span>
+
                 <span className="font-semibold text-neutral-900">
-                  {deliveryMethod === 'express' ? `$${(shippingFee + 8).toFixed(2)}` : shippingFee === 0 ? 'FREE' : `$${shippingFee.toFixed(2)}`}
+
+                  {deliveryMethod === 'express'
+                    ? `$${(shippingFee + 8).toFixed(2)}`
+                    : shippingFee === 0
+                    ? 'FREE'
+                    : `$${shippingFee.toFixed(2)}`}
+
                 </span>
+
               </div>
+
               <div className="flex justify-between">
+
                 <span>Estimated Tax (5%)</span>
-                <span className="font-semibold text-neutral-900">${tax.toFixed(2)}</span>
-              </div>
-              <div className="border-t border-neutral-200 pt-3 flex justify-between items-baseline">
-                <span className="text-sm font-bold text-neutral-900">Total Due</span>
-                <span className="text-xl font-black text-neutral-950">
-                  ${(deliveryMethod === 'express' ? total + 8 : total).toFixed(2)}
+
+                <span className="font-semibold text-neutral-900">
+                  ${tax.toFixed(2)}
                 </span>
+
               </div>
+
+              <div className="border-t border-neutral-200 pt-3 flex justify-between items-baseline">
+
+                <span className="text-sm font-bold text-neutral-900">
+                  Total Due
+                </span>
+
+                <span className="text-xl font-black text-neutral-950">
+                  ${displayTotal.toFixed(2)}
+                </span>
+
+              </div>
+
             </div>
 
+            {/* PLACE ORDER */}
             <button
               id="confirm-place-order-btn"
               disabled={placingOrder}
               onClick={handlePlaceOrder}
               className="w-full py-3.5 bg-neutral-950 hover:bg-neutral-800 disabled:bg-neutral-400 text-white text-xs font-bold uppercase tracking-wider rounded-lg transition-colors flex items-center justify-center gap-2 shadow-lg"
             >
+
               {placingOrder ? (
-                <span>Processing Order...</span>
+
+                <span>
+                  Processing Order...
+                </span>
+
               ) : (
+
                 <>
                   <ShieldCheck className="w-4 h-4" />
-                  <span>Place Order • ${(deliveryMethod === 'express' ? total + 8 : total).toFixed(2)}</span>
+
+                  <span>
+                    Place Order • $
+                    {displayTotal.toFixed(2)}
+                  </span>
                 </>
+
               )}
+
             </button>
 
             <p className="text-[10px] text-neutral-400 text-center leading-normal">
-              By confirming, you agree to Sanu Builds Terms of Service and 30-Day Return Policy.
+              By confirming, you agree to Sanu Builds
+              Terms of Service and 30-Day Return Policy.
             </p>
+
           </div>
+
         </div>
+
       </div>
+
     </div>
   );
 };
