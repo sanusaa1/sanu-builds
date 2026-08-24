@@ -1,6 +1,6 @@
-import { Category, Coupon, Product, Review } from '../types';
+// src/data/seedData.ts
 
-const IMAGE_BASE = 'https://placehold.co/800x1000/png';
+import { Category, Coupon, Product, Review } from '../types';
 
 export const SEED_CATEGORIES: Category[] = [
   {
@@ -9,7 +9,8 @@ export const SEED_CATEGORIES: Category[] = [
     slug: 'tshirts',
     description:
       'Everyday Sanu Builds T-shirts with clean fits and comfortable fabrics.',
-    image: `https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/fa0a199a-b8f2-4c52-9dfc-20ff7679a889.jpg`,
+    image:
+      'https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/fa0a199a-b8f2-4c52-9dfc-20ff7679a889.jpg',
     featured: true,
     productCount: 2,
   },
@@ -19,7 +20,8 @@ export const SEED_CATEGORIES: Category[] = [
     slug: 'polo-tshirts',
     description:
       'Premium solid polo T-shirts for a clean and classic look.',
-    image: `https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/7d042764-0cce-4484-99f8-cb7f0386cf73.jpg`,
+    image:
+      'https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/7d042764-0cce-4484-99f8-cb7f0386cf73.jpg',
     featured: true,
     productCount: 1,
   },
@@ -29,7 +31,8 @@ export const SEED_CATEGORIES: Category[] = [
     slug: 'car-accessories',
     description:
       'Useful automotive accessories and products.',
-    image: `https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/1781978116185-WhatsApp-Image-2026-06-20-at-7.26.04-PM.jpeg`,
+    image:
+      'https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/1781978116185-WhatsApp-Image-2026-06-20-at-7.26.04-PM.jpeg',
     featured: true,
     productCount: 1,
   },
@@ -39,7 +42,8 @@ export const SEED_CATEGORIES: Category[] = [
     slug: 'cables',
     description:
       'Reliable charging and data cables for everyday devices.',
-    image: `https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/e3330ad9-9364-47ae-9196-9cdd67fbdd02.png`,
+    image:
+      'https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/e3330ad9-9364-47ae-9196-9cdd67fbdd02.png',
     featured: true,
     productCount: 1,
   },
@@ -49,7 +53,8 @@ export const SEED_PRODUCTS: Product[] = [
   {
     id: 'sb-blk-polo-004',
     name: "Sanu Builds Men's Premium Black Solid Cotton Blend Polo T-Shirt",
-    slug: 'sanu-builds-mens-premium-black-solid-cotton-blend-polo-tshirt',
+    slug:
+      'sanu-builds-mens-premium-black-solid-cotton-blend-polo-tshirt',
     description:
       "Sanu Builds Men's Premium Black Solid Cotton Blend Polo T-Shirt. A clean and comfortable 160 GSM black polo T-shirt designed for everyday casual and smart-casual wear.",
     categoryId: 'polo-tshirts',
@@ -149,10 +154,10 @@ export const SEED_PRODUCTS: Product[] = [
     discountPercentage: 0,
 
     images: [
-      `https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/fa0a199a-b8f2-4c52-9dfc-20ff7679a889.jpg`,
-      `https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/427208ee-6e52-41d3-a6a1-33077a3f93a3.jpg`,
-      `https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/e8de00c0-fc84-449c-b13b-d5a336f3be8c.jpg`,
-      `https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/0c661610-6d36-4631-83cd-086bf0b7de0c.jpg`,
+      'https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/fa0a199a-b8f2-4c52-9dfc-20ff7679a889.jpg',
+      'https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/427208ee-6e52-41d3-a6a1-33077a3f93a3.jpg',
+      'https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/e8de00c0-fc84-449c-b13b-d5a336f3be8c.jpg',
+      'https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/0c661610-6d36-4631-83cd-086bf0b7de0c.jpg',
     ],
 
     sizes: ['M', 'L', 'XL'],
@@ -227,11 +232,10 @@ export const SEED_PRODUCTS: Product[] = [
     discountPercentage: 0,
 
     images: [
-      `https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/1781978057207-IMG-8854.JPG.jpeg`,
-      `https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/1781977999385-IMG-8852.JPG--2--removebg-preview.png`,
-      `https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/1781978091510-IMG-8853.JPG.jpeg`,
-      `https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/1781978116185-WhatsApp-Image-2026-06-20-at-7.26.04-PM.jpeg`,
-      
+      'https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/1781978057207-IMG-8854.JPG.jpeg',
+      'https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/1781977999385-IMG-8852.JPG--2--removebg-preview.png',
+      'https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/1781978091510-IMG-8853.JPG.jpeg',
+      'https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/1781978116185-WhatsApp-Image-2026-06-20-at-7.26.04-PM.jpeg',
     ],
 
     sizes: ['Free Size'],
@@ -290,9 +294,9 @@ export const SEED_PRODUCTS: Product[] = [
     discountPercentage: 0,
 
     images: [
-      `https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/e3330ad9-9364-47ae-9196-9cdd67fbdd02.png`,
-      `https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/c212b599-f265-41d9-925c-70ed37753ed8.png`,
-      `https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/45a0755f-adbc-4e0f-9860-54debb8bc6c9.png`,
+      'https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/e3330ad9-9364-47ae-9196-9cdd67fbdd02.png',
+      'https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/c212b599-f265-41d9-925c-70ed37753ed8.png',
+      'https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/45a0755f-adbc-4e0f-9860-54debb8bc6c9.png',
     ],
 
     sizes: ['Free Size'],
@@ -347,123 +351,237 @@ export const INITIAL_CATEGORIES = SEED_CATEGORIES;
 export const INITIAL_COUPONS = SEED_COUPONS;
 export const INITIAL_REVIEWS = SEED_REVIEWS;
 
+
+/*
+|--------------------------------------------------------------------------
+| FIREBASE INITIAL SYNC
+|--------------------------------------------------------------------------
+|
+| Home page par application start hone ke baad ye function call hoga.
+|
+| Logic:
+|
+| 1. Firebase me product/category already hai
+|       -> kuch nahi karega
+|
+| 2. Firebase me product/category nahi hai
+|       -> seed data Firebase me create karega
+|
+| 3. Existing Firebase product ko overwrite nahi karega.
+|
+| 4. Existing Firebase category ko overwrite nahi karega.
+|
+| 5. Coupons/reviews bhi sirf missing documents create honge.
+|
+| Isse Firebase me manually edited real product data safe rahega.
+|
+|--------------------------------------------------------------------------
+*/
+
 export async function seedInitialStoreData(): Promise<void> {
   try {
     const {
+      collection,
       doc,
+      getDocs,
       writeBatch,
     } = await import('firebase/firestore');
 
     const { db } = await import('../lib/firebase');
 
+    console.log('Sanu Builds: checking Firebase catalog...');
+
+    /*
+     * ---------------------------------------------------------------
+     * READ EXISTING FIREBASE DATA
+     * ---------------------------------------------------------------
+     */
+
+    const [
+      productsSnapshot,
+      categoriesSnapshot,
+      couponsSnapshot,
+      reviewsSnapshot,
+    ] = await Promise.all([
+      getDocs(collection(db, 'products')),
+      getDocs(collection(db, 'categories')),
+      getDocs(collection(db, 'coupons')),
+      getDocs(collection(db, 'reviews')),
+    ]);
+
+    /*
+     * ---------------------------------------------------------------
+     * CREATE SETS OF EXISTING DOCUMENT IDs
+     * ---------------------------------------------------------------
+     */
+
+    const existingProductIds = new Set(
+      productsSnapshot.docs.map((item) => item.id)
+    );
+
+    const existingCategoryIds = new Set(
+      categoriesSnapshot.docs.map((item) => item.id)
+    );
+
+    const existingCouponIds = new Set(
+      couponsSnapshot.docs.map((item) => item.id)
+    );
+
+    const existingReviewIds = new Set(
+      reviewsSnapshot.docs.map((item) => item.id)
+    );
+
+    /*
+     * ---------------------------------------------------------------
+     * FIREBASE BATCH
+     * ---------------------------------------------------------------
+     */
+
     const batch = writeBatch(db);
 
-    /*
-     * Remove old sample products created by the previous
-     * Sanu Builds demo catalog.
-     */
-    const oldSampleProductIds = [
-      'sb-001',
-      'sb-002',
-      'sb-003',
-      'sb-004',
-      'sb-005',
-      'sb-006',
-    ];
-
-    for (const productId of oldSampleProductIds) {
-      batch.delete(doc(db, 'products', productId));
-    }
+    let productsAdded = 0;
+    let categoriesAdded = 0;
+    let couponsAdded = 0;
+    let reviewsAdded = 0;
 
     /*
-     * Remove old sample categories.
+     * ---------------------------------------------------------------
+     * CATEGORIES
+     * ---------------------------------------------------------------
+     *
+     * Firebase me category already hai:
+     *     SKIP
+     *
+     * Firebase me category nahi hai:
+     *     CREATE
      */
-    const oldCategoryIds = [
-      'oversized',
-      'minimal',
-      'graphic',
-      'heavyweight',
-      'regular',
-    ];
 
-    for (const categoryId of oldCategoryIds) {
-      batch.delete(doc(db, 'categories', categoryId));
-    }
-
-    /*
-     * Remove old demo coupons.
-     */
-    const oldCouponIds = [
-      'c-build15',
-      'c-sanu10',
-      'c-freeship',
-    ];
-
-    for (const couponId of oldCouponIds) {
-      batch.delete(doc(db, 'coupons', couponId));
-    }
-
-    /*
-     * Remove old demo reviews.
-     */
-    const oldReviewIds = [
-      'rev-01',
-      'rev-02',
-      'rev-03',
-    ];
-
-    for (const reviewId of oldReviewIds) {
-      batch.delete(doc(db, 'reviews', reviewId));
-    }
-
-    /*
-     * Add current categories.
-     */
     for (const category of SEED_CATEGORIES) {
+      if (existingCategoryIds.has(category.id)) {
+        console.log(
+          `Sanu Builds: category already exists -> ${category.id}`
+        );
+
+        continue;
+      }
+
       batch.set(
         doc(db, 'categories', category.id),
         category
       );
+
+      categoriesAdded++;
+
+      console.log(
+        `Sanu Builds: adding missing category -> ${category.id}`
+      );
     }
 
     /*
-     * Add current products.
+     * ---------------------------------------------------------------
+     * PRODUCTS
+     * ---------------------------------------------------------------
+     *
+     * Firebase me product already hai:
+     *     SKIP
+     *
+     * Firebase me product nahi hai:
+     *     CREATE
      */
+
     for (const product of SEED_PRODUCTS) {
+      if (existingProductIds.has(product.id)) {
+        console.log(
+          `Sanu Builds: product already exists -> ${product.id}`
+        );
+
+        continue;
+      }
+
       batch.set(
         doc(db, 'products', product.id),
         product
       );
+
+      productsAdded++;
+
+      console.log(
+        `Sanu Builds: adding missing product -> ${product.id}`
+      );
     }
 
     /*
-     * Add current coupons.
+     * ---------------------------------------------------------------
+     * COUPONS
+     * ---------------------------------------------------------------
      */
+
     for (const coupon of SEED_COUPONS) {
+      if (existingCouponIds.has(coupon.id)) {
+        continue;
+      }
+
       batch.set(
         doc(db, 'coupons', coupon.id),
         coupon
       );
+
+      couponsAdded++;
     }
 
     /*
-     * Add current reviews.
+     * ---------------------------------------------------------------
+     * REVIEWS
+     * ---------------------------------------------------------------
      */
+
     for (const review of SEED_REVIEWS) {
+      if (existingReviewIds.has(review.id)) {
+        continue;
+      }
+
       batch.set(
         doc(db, 'reviews', review.id),
         review
       );
+
+      reviewsAdded++;
+    }
+
+    /*
+     * ---------------------------------------------------------------
+     * COMMIT ONLY IF SOMETHING IS MISSING
+     * ---------------------------------------------------------------
+     */
+
+    const totalAdded =
+      productsAdded +
+      categoriesAdded +
+      couponsAdded +
+      reviewsAdded;
+
+    if (totalAdded === 0) {
+      console.log(
+        'Sanu Builds: Firebase catalog is already synced. Nothing to add.'
+      );
+
+      return;
     }
 
     await batch.commit();
 
     console.log(
-      'Sanu Builds real product catalog seeded successfully.'
+      'Sanu Builds: Firebase initial sync completed successfully.',
+      {
+        productsAdded,
+        categoriesAdded,
+        couponsAdded,
+        reviewsAdded,
+      }
     );
   } catch (err) {
     console.warn(
-      'Could not complete Sanu Builds catalog seed:',
+      'Sanu Builds: Firebase initial catalog sync failed:',
       err
     );
   }
