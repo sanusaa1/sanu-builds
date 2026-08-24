@@ -29,7 +29,7 @@ export const SEED_CATEGORIES: Category[] = [
     slug: 'car-accessories',
     description:
       'Useful automotive accessories and products.',
-    image: `${IMAGE_BASE}?text=Car+Accessories`,
+    image: `https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/1781978116185-WhatsApp-Image-2026-06-20-at-7.26.04-PM.jpeg`,
     featured: true,
     productCount: 1,
   },
@@ -227,8 +227,11 @@ export const SEED_PRODUCTS: Product[] = [
     discountPercentage: 0,
 
     images: [
-      `${IMAGE_BASE}?text=ANRITVOX+12V+Horn`,
-      `${IMAGE_BASE}?text=Dual+Tone+Horn`,
+      `https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/1781978057207-IMG-8854.JPG.jpeg`,
+      `https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/1781977999385-IMG-8852.JPG--2--removebg-preview.png`,
+      `https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/1781978091510-IMG-8853.JPG.jpeg`,
+      `https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/1781978116185-WhatsApp-Image-2026-06-20-at-7.26.04-PM.jpeg`,
+      
     ],
 
     sizes: ['Free Size'],
