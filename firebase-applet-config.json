@@ -1,12 +1,12 @@
 {
-  "projectId": "project-919a6637-c955-49c4-928",
-  "appId": "1:188438642950:web:fd99c9e8d274dc1f8ede87",
-  "apiKey": "AIzaSyDelonlx8auAFdxxVVCUPojR75shcjbda8",
-  "authDomain": "project-919a6637-c955-49c4-928.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-41bafe36-5984-4699-9b17-dbbb28164a8d",
-  "storageBucket": "project-919a6637-c955-49c4-928.firebasestorage.app",
-  "messagingSenderId": "188438642950",
-  "measurementId": "",
-  "oAuthClientId": "188438642950-94hmnsdm86pklmo1o8vnquvme316ks5s.apps.googleusercontent.com",
+  "projectId": "sanu-builds",
+  "appId": "1:850005833813:web:84afdc4b31bc4a9a6b3cdc",
+  "apiKey": "AIzaSyCh8EBwn1_3_FgNqoI7LEdGS050_UMYV8A",
+  "authDomain": "sanu-builds.firebaseapp.com",
+  "firestoreDatabaseId": "(default)",
+  "storageBucket": "sanu-builds.firebasestorage.app",
+  "messagingSenderId": "850005833813",
+  "measurementId": "G-58S5FPD0GG",
+  "oAuthClientId": "850005833813-npfmitl1r5jffonaeflcc34iif5hkidu.apps.googleusercontent.com",
   "recaptchaSiteKey": ""
 }
