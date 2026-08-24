@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+
+Disallow: /login
+Disallow: /register
+Disallow: /cart
+Disallow: /checkout
+Disallow: /orders
+Disallow: /track/
+Disallow: /account
+Disallow: /admin
+
+Sitemap: https://sanubuilds.com/sitemap.xml
