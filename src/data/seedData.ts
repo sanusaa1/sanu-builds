@@ -350,37 +350,35 @@ export const INITIAL_COUPONS = SEED_COUPONS;
 export const INITIAL_REVIEWS = SEED_REVIEWS;
 
 
-/*
-|--------------------------------------------------------------------------
-| FIREBASE INITIAL SYNC
-|--------------------------------------------------------------------------
-|
-| IMPORTANT:
-|
-| Tumhare Firestore rules ke according:
-|
-| products/categories/coupons me READ public hai,
-| lekin CREATE/UPDATE/DELETE sirf admin ke liye hai.
-|
-| Isliye HomePage ko public user ke browser se seed/write
-| karne dena galat tha.
-|
-| Ab:
-|
-| 1. Public user:
-|       -> Firebase ko READ kar sakta hai
-|       -> seed/write nahi karega
-|       -> permission error nahi aayega
-|
-| 2. Admin:
-|       -> agar admin logged-in hai
-|       -> missing seed documents create kar sakta hai
-|
-| 3. Existing documents:
-|       -> overwrite nahi honge
-|
-|--------------------------------------------------------------------------
-*/
+/* ============================================================================
+   FIREBASE INITIAL STORE SYNC
+
+   Behaviour:
+
+   1. Firebase document exists:
+      -> SKIP
+      -> Existing Firebase data is never overwritten.
+
+   2. Firebase document missing:
+      -> CREATE seed document.
+
+   3. Firebase catalog completely empty:
+      -> ALL seed categories/products/coupons/reviews are created.
+
+   4. Customer/public user:
+      -> READ only.
+      -> No write operation.
+
+   5. Admin:
+      -> Missing seed documents are created.
+
+   IMPORTANT:
+
+   Current Firestore rules allow catalog CREATE only to admins.
+   Therefore initial seeding must happen from an authenticated admin
+   session. This function waits for Firebase Auth restoration before
+   deciding whether the current user is an admin.
+============================================================================ */
 
 export async function seedInitialStoreData(): Promise<void> {
   try {
@@ -388,9 +386,11 @@ export async function seedInitialStoreData(): Promise<void> {
       collection,
       doc,
       getDocs,
+      getDoc,
       writeBatch,
     } = await import('firebase/firestore');
 
+    const { onAuthStateChanged } = await import('firebase/auth');
     const { db } = await import('../lib/firebase');
 
     const { getAuth } = await import('firebase/auth');
@@ -402,34 +402,74 @@ export async function seedInitialStoreData(): Promise<void> {
     );
 
     /*
-     * ---------------------------------------------------------------
-     * CHECK AUTHENTICATION
-     * ---------------------------------------------------------------
+     * ------------------------------------------------------------------------
+     * WAIT FOR FIREBASE AUTH TO FINISH RESTORING THE SESSION
+     * ------------------------------------------------------------------------
+     *
+     * auth.currentUser immediately check karne se problem ho sakti hai:
+     *
+     * Page load:
+     *   auth.currentUser === null
+     *
+     * Kuch milliseconds baad:
+     *   Firebase admin session restore kar deta hai.
+     *
+     * Isliye yahan auth state ka wait kiya ja raha hai.
      */
 
-    const currentUser = auth.currentUser;
+    const currentUser = await new Promise<any>((resolve) => {
+      let finished = false;
+
+      const unsubscribe = onAuthStateChanged(
+        auth,
+        (user) => {
+          if (finished) {
+            return;
+          }
+
+          finished = true;
+
+          unsubscribe();
+
+          resolve(user);
+        },
+        () => {
+          if (finished) {
+            return;
+          }
+
+          finished = true;
+
+          unsubscribe();
+
+          resolve(null);
+        }
+      );
+    });
 
     /*
-     * Public customer ke browser se Firebase write nahi karna.
-     *
-     * Firestore rules ke according create/update/delete ke liye
-     * authenticated admin required hai.
+     * ------------------------------------------------------------------------
+     * PUBLIC USER
+     * ------------------------------------------------------------------------
      */
 
     if (!currentUser) {
       console.log(
-        'Sanu Builds: public user detected. Catalog seed skipped.'
+        'Sanu Builds: no authenticated admin session. Seed skipped.'
       );
 
       return;
     }
 
     /*
-     * ---------------------------------------------------------------
-     * ADMIN CHECK
-     * ---------------------------------------------------------------
+     * ------------------------------------------------------------------------
+     * ADMIN DETECTION
+     * ------------------------------------------------------------------------
      *
-     * Tumhare Firestore rules me ye dono emails direct admin hain.
+     * Firestore rules ke saath match:
+     *
+     * 1. Direct admin email
+     * 2. users/{uid}.role === "admin"
      */
 
     const ADMIN_EMAILS = [
@@ -438,29 +478,62 @@ export async function seedInitialStoreData(): Promise<void> {
     ];
 
     const currentEmail =
-      currentUser.email?.toLowerCase() || '';
+      currentUser.email?.trim().toLowerCase() || '';
+
+    let isAdminUser =
+      ADMIN_EMAILS.includes(currentEmail);
 
     /*
-     * Agar email admin list me nahi hai,
-     * frontend seed operation skip hoga.
+     * Agar email direct admin list me nahi hai,
+     * users document ka role check karo.
      */
 
-    if (!ADMIN_EMAILS.includes(currentEmail)) {
+    if (!isAdminUser) {
+      try {
+        const userDocument = await getDoc(
+          doc(db, 'users', currentUser.uid)
+        );
+
+        if (
+          userDocument.exists() &&
+          userDocument.data()?.role === 'admin'
+        ) {
+          isAdminUser = true;
+        }
+      } catch (userError) {
+        console.warn(
+          'Sanu Builds: unable to verify admin role from users document.',
+          userError
+        );
+      }
+    }
+
+    /*
+     * ------------------------------------------------------------------------
+     * CUSTOMER / NORMAL AUTHENTICATED USER
+     * ------------------------------------------------------------------------
+     */
+
+    if (!isAdminUser) {
       console.log(
-        'Sanu Builds: logged-in customer detected. Catalog seed skipped.'
+        'Sanu Builds: authenticated customer detected. Catalog seed skipped.'
       );
 
       return;
     }
 
     console.log(
-      'Sanu Builds: admin detected. Checking missing catalog data...'
+      `Sanu Builds: admin detected (${currentEmail || currentUser.uid}).`
+    );
+
+    console.log(
+      'Sanu Builds: checking missing Firebase catalog documents...'
     );
 
     /*
-     * ---------------------------------------------------------------
-     * READ FIREBASE DATA
-     * ---------------------------------------------------------------
+     * ------------------------------------------------------------------------
+     * READ ALL EXISTING FIREBASE COLLECTIONS
+     * ------------------------------------------------------------------------
      */
 
     const [
@@ -469,16 +542,27 @@ export async function seedInitialStoreData(): Promise<void> {
       couponsSnapshot,
       reviewsSnapshot,
     ] = await Promise.all([
-      getDocs(collection(db, 'products')),
-      getDocs(collection(db, 'categories')),
-      getDocs(collection(db, 'coupons')),
-      getDocs(collection(db, 'reviews')),
+      getDocs(
+        collection(db, 'products')
+      ),
+
+      getDocs(
+        collection(db, 'categories')
+      ),
+
+      getDocs(
+        collection(db, 'coupons')
+      ),
+
+      getDocs(
+        collection(db, 'reviews')
+      ),
     ]);
 
     /*
-     * ---------------------------------------------------------------
+     * ------------------------------------------------------------------------
      * EXISTING DOCUMENT IDS
-     * ---------------------------------------------------------------
+     * ------------------------------------------------------------------------
      */
 
     const existingProductIds = new Set(
@@ -506,9 +590,9 @@ export async function seedInitialStoreData(): Promise<void> {
     );
 
     /*
-     * ---------------------------------------------------------------
+     * ------------------------------------------------------------------------
      * FIRESTORE BATCH
-     * ---------------------------------------------------------------
+     * ------------------------------------------------------------------------
      */
 
     const batch = writeBatch(db);
@@ -519,9 +603,9 @@ export async function seedInitialStoreData(): Promise<void> {
     let reviewsAdded = 0;
 
     /*
-     * ---------------------------------------------------------------
+     * ------------------------------------------------------------------------
      * CATEGORIES
-     * ---------------------------------------------------------------
+     * ------------------------------------------------------------------------
      */
 
     for (const category of SEED_CATEGORIES) {
@@ -531,7 +615,7 @@ export async function seedInitialStoreData(): Promise<void> {
         )
       ) {
         console.log(
-          `Sanu Builds: category already exists -> ${category.id}`
+          `Sanu Builds: category exists -> ${category.id}`
         );
 
         continue;
@@ -549,14 +633,14 @@ export async function seedInitialStoreData(): Promise<void> {
       categoriesAdded++;
 
       console.log(
-        `Sanu Builds: adding missing category -> ${category.id}`
+        `Sanu Builds: creating category -> ${category.id}`
       );
     }
 
     /*
-     * ---------------------------------------------------------------
+     * ------------------------------------------------------------------------
      * PRODUCTS
-     * ---------------------------------------------------------------
+     * ------------------------------------------------------------------------
      */
 
     for (const product of SEED_PRODUCTS) {
@@ -566,7 +650,7 @@ export async function seedInitialStoreData(): Promise<void> {
         )
       ) {
         console.log(
-          `Sanu Builds: product already exists -> ${product.id}`
+          `Sanu Builds: product exists -> ${product.id}`
         );
 
         continue;
@@ -584,14 +668,14 @@ export async function seedInitialStoreData(): Promise<void> {
       productsAdded++;
 
       console.log(
-        `Sanu Builds: adding missing product -> ${product.id}`
+        `Sanu Builds: creating product -> ${product.id}`
       );
     }
 
     /*
-     * ---------------------------------------------------------------
+     * ------------------------------------------------------------------------
      * COUPONS
-     * ---------------------------------------------------------------
+     * ------------------------------------------------------------------------
      */
 
     for (const coupon of SEED_COUPONS) {
@@ -600,6 +684,10 @@ export async function seedInitialStoreData(): Promise<void> {
           coupon.id
         )
       ) {
+        console.log(
+          `Sanu Builds: coupon exists -> ${coupon.id}`
+        );
+
         continue;
       }
 
@@ -613,12 +701,16 @@ export async function seedInitialStoreData(): Promise<void> {
       );
 
       couponsAdded++;
+
+      console.log(
+        `Sanu Builds: creating coupon -> ${coupon.id}`
+      );
     }
 
     /*
-     * ---------------------------------------------------------------
+     * ------------------------------------------------------------------------
      * REVIEWS
-     * ---------------------------------------------------------------
+     * ------------------------------------------------------------------------
      */
 
     for (const review of SEED_REVIEWS) {
@@ -627,6 +719,10 @@ export async function seedInitialStoreData(): Promise<void> {
           review.id
         )
       ) {
+        console.log(
+          `Sanu Builds: review exists -> ${review.id}`
+        );
+
         continue;
       }
 
@@ -640,12 +736,16 @@ export async function seedInitialStoreData(): Promise<void> {
       );
 
       reviewsAdded++;
+
+      console.log(
+        `Sanu Builds: creating review -> ${review.id}`
+      );
     }
 
     /*
-     * ---------------------------------------------------------------
-     * NOTHING TO ADD
-     * ---------------------------------------------------------------
+     * ------------------------------------------------------------------------
+     * CHECK IF ANYTHING NEEDS TO BE CREATED
+     * ------------------------------------------------------------------------
      */
 
     const totalAdded =
@@ -656,22 +756,20 @@ export async function seedInitialStoreData(): Promise<void> {
 
     if (totalAdded === 0) {
       console.log(
-        'Sanu Builds: Firebase catalog is already synced.'
+        'Sanu Builds: Firebase catalog already contains all seed documents. Nothing to add.'
       );
 
       return;
     }
 
     /*
-     * ---------------------------------------------------------------
-     * COMMIT
-     * ---------------------------------------------------------------
+     * ------------------------------------------------------------------------
+     * COMMIT EVERYTHING
+     * ------------------------------------------------------------------------
      */
 
-    await batch.commit();
-
     console.log(
-      'Sanu Builds: Firebase initial sync completed successfully.',
+      'Sanu Builds: uploading missing seed data to Firebase...',
       {
         productsAdded,
         categoriesAdded,
@@ -679,18 +777,23 @@ export async function seedInitialStoreData(): Promise<void> {
         reviewsAdded,
       }
     );
-  } catch (error: any) {
-    /*
-     * ---------------------------------------------------------------
-     * ERROR HANDLING
-     * ---------------------------------------------------------------
-     *
-     * Permission error ko app crash nahi karega.
-     */
 
+    await batch.commit();
+
+    console.log(
+      'Sanu Builds: Firebase initial catalog sync completed successfully.',
+      {
+        productsAdded,
+        categoriesAdded,
+        couponsAdded,
+        reviewsAdded,
+        totalAdded,
+      }
+    );
+  } catch (error: any) {
     console.warn(
-      'Sanu Builds: Firebase catalog sync skipped:',
-      error
+      'Sanu Builds: Firebase initial catalog sync failed:',
+      error?.message || error
     );
   }
 }
