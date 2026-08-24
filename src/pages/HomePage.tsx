@@ -460,7 +460,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             <div className="relative aspect-[4/3] rounded-xl overflow-hidden border border-neutral-700 shadow-2xl">
 
               <img
-                src="https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=1000&q=80"
+                src="https://ik.imagekit.io/4qm5muakl/Sanu%20Builds/9ea6d877-f53c-4cd6-94f9-c59a30566c9b.jpg"
                 alt="Sanu Builds Fabric Close-up"
                 referrerPolicy="no-referrer"
                 className="w-full h-full object-cover"
