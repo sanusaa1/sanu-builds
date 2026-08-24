@@ -1,3 +1,5 @@
+// ProductDetailPage.tsx
+
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Heart,
@@ -45,17 +47,603 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
   /*
    * ---------------------------------------------------------
+   * SEO HELPERS
+   * ---------------------------------------------------------
+   */
+
+  const getSiteUrl = () => {
+    if (typeof window !== 'undefined') {
+      return window.location.origin.replace(/\/$/, '');
+    }
+
+    return 'https://sanubuilds.com';
+  };
+
+  const siteUrl = getSiteUrl();
+
+  const productSlug =
+    product.slug ||
+    product.id ||
+    product.name
+      ?.toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+  const productUrl = `${siteUrl}/product/${productSlug}`;
+
+  const seoTitle = `${product.name} | ${
+    product.brand || 'Sanu Builds'
+  }`;
+
+  const seoDescription = (
+    product.description ||
+    `Buy ${product.name} online from ${
+      product.brand || 'Sanu Builds'
+    }. Shop premium quality apparel with secure checkout and fast delivery.`
+  )
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 160);
+
+  const seoImage =
+    product.images?.[0] ||
+    `${siteUrl}/og-image.jpg`;
+
+  const seoPrice = Number(product.price || 0);
+
+  const seoCompareAtPrice = Number(
+    product.compareAtPrice || 0
+  );
+
+  const seoAvailability =
+    Number(product.stock || 0) > 0
+      ? 'https://schema.org/InStock'
+      : 'https://schema.org/OutOfStock';
+
+  /*
+   * ---------------------------------------------------------
+   * SEO META + STRUCTURED DATA
+   * ---------------------------------------------------------
+   */
+
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    document.title = seoTitle;
+
+    const ensureMeta = (
+      selector: string,
+      attributes: Record<string, string>,
+      content: string
+    ) => {
+      let element = document.head.querySelector(
+        selector
+      ) as HTMLMetaElement | null;
+
+      if (!element) {
+        element = document.createElement('meta');
+
+        Object.entries(attributes).forEach(
+          ([key, value]) => {
+            element!.setAttribute(key, value);
+          }
+        );
+
+        document.head.appendChild(element);
+      }
+
+      element.setAttribute('content', content);
+
+      return element;
+    };
+
+    const ensureLink = (
+      rel: string,
+      href: string
+    ) => {
+      let element = document.head.querySelector(
+        `link[rel="${rel}"]`
+      ) as HTMLLinkElement | null;
+
+      if (!element) {
+        element = document.createElement('link');
+        element.setAttribute('rel', rel);
+        document.head.appendChild(element);
+      }
+
+      element.setAttribute('href', href);
+
+      return element;
+    };
+
+    /*
+     * Basic SEO
+     */
+
+    ensureMeta(
+      'meta[name="description"]',
+      { name: 'description' },
+      seoDescription
+    );
+
+    ensureMeta(
+      'meta[name="robots"]',
+      { name: 'robots' },
+      'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1'
+    );
+
+    ensureMeta(
+      'meta[name="googlebot"]',
+      { name: 'googlebot' },
+      'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1'
+    );
+
+    ensureMeta(
+      'meta[name="theme-color"]',
+      { name: 'theme-color' },
+      '#ffffff'
+    );
+
+    /*
+     * Canonical
+     */
+
+    ensureLink('canonical', productUrl);
+
+    /*
+     * Open Graph
+     */
+
+    ensureMeta(
+      'meta[property="og:type"]',
+      { property: 'og:type' },
+      'product'
+    );
+
+    ensureMeta(
+      'meta[property="og:title"]',
+      { property: 'og:title' },
+      seoTitle
+    );
+
+    ensureMeta(
+      'meta[property="og:description"]',
+      { property: 'og:description' },
+      seoDescription
+    );
+
+    ensureMeta(
+      'meta[property="og:url"]',
+      { property: 'og:url' },
+      productUrl
+    );
+
+    ensureMeta(
+      'meta[property="og:image"]',
+      { property: 'og:image' },
+      seoImage
+    );
+
+    ensureMeta(
+      'meta[property="og:image:alt"]',
+      { property: 'og:image:alt' },
+      product.name
+    );
+
+    ensureMeta(
+      'meta[property="og:site_name"]',
+      { property: 'og:site_name' },
+      'Sanu Builds'
+    );
+
+    ensureMeta(
+      'meta[property="og:locale"]',
+      { property: 'og:locale' },
+      'en_IN'
+    );
+
+    /*
+     * Twitter
+     */
+
+    ensureMeta(
+      'meta[name="twitter:card"]',
+      { name: 'twitter:card' },
+      'summary_large_image'
+    );
+
+    ensureMeta(
+      'meta[name="twitter:title"]',
+      { name: 'twitter:title' },
+      seoTitle
+    );
+
+    ensureMeta(
+      'meta[name="twitter:description"]',
+      { name: 'twitter:description' },
+      seoDescription
+    );
+
+    ensureMeta(
+      'meta[name="twitter:image"]',
+      { name: 'twitter:image' },
+      seoImage
+    );
+
+    /*
+     * Product-specific meta
+     */
+
+    ensureMeta(
+      'meta[property="product:price:amount"]',
+      { property: 'product:price:amount' },
+      seoPrice.toFixed(2)
+    );
+
+    ensureMeta(
+      'meta[property="product:price:currency"]',
+      { property: 'product:price:currency' },
+      'INR'
+    );
+
+    ensureMeta(
+      'meta[property="product:availability"]',
+      { property: 'product:availability' },
+      Number(product.stock || 0) > 0
+        ? 'in stock'
+        : 'out of stock'
+    );
+
+    if (product.brand) {
+      ensureMeta(
+        'meta[property="product:brand"]',
+        { property: 'product:brand' },
+        product.brand
+      );
+    }
+
+    if (product.sku) {
+      ensureMeta(
+        'meta[property="product:retailer_item_id"]',
+        { property: 'product:retailer_item_id' },
+        product.sku
+      );
+    }
+
+    /*
+     * -------------------------------------------------------
+     * PRODUCT JSON-LD
+     * -------------------------------------------------------
+     */
+
+    const productSchema: Record<string, unknown> = {
+      '@context': 'https://schema.org',
+      '@type': 'Product',
+      '@id': `${productUrl}#product`,
+      name: product.name,
+      url: productUrl,
+      description: seoDescription,
+      image:
+        Array.isArray(product.images) &&
+        product.images.length > 0
+          ? product.images
+          : [seoImage],
+      sku: product.sku || product.id,
+      category:
+        product.categoryName ||
+        'Apparel',
+      brand: {
+        '@type': 'Brand',
+        name:
+          product.brand ||
+          'Sanu Builds',
+      },
+      offers: {
+        '@type': 'Offer',
+        url: productUrl,
+        priceCurrency: 'INR',
+        price: seoPrice.toFixed(2),
+        availability:
+          seoAvailability,
+        itemCondition:
+          'https://schema.org/NewCondition',
+        seller: {
+          '@type': 'Organization',
+          name: 'Sanu Builds',
+          url: siteUrl,
+        },
+      },
+    };
+
+    /*
+     * Compare-at price / sale price
+     */
+
+    if (
+      seoCompareAtPrice > seoPrice &&
+      seoCompareAtPrice > 0
+    ) {
+      (
+        productSchema.offers as Record<
+          string,
+          unknown
+        >
+      ).priceValidUntil =
+        new Date(
+          Date.now() +
+            1000 *
+              60 *
+              60 *
+              24 *
+              30
+        )
+          .toISOString()
+          .split('T')[0];
+    }
+
+    /*
+     * Rating schema
+     */
+
+    const schemaRating = Math.min(
+      5,
+      Math.max(
+        0,
+        Number(product.rating ?? 0)
+      )
+    );
+
+    const schemaReviewCount = Math.max(
+      0,
+      Number(
+        product.reviewCount ?? 0
+      )
+    );
+
+    if (
+      schemaRating > 0 &&
+      schemaReviewCount > 0
+    ) {
+      productSchema.aggregateRating = {
+        '@type':
+          'AggregateRating',
+        ratingValue:
+          schemaRating.toFixed(1),
+        bestRating: '5',
+        worstRating: '1',
+        reviewCount:
+          schemaReviewCount,
+      };
+    }
+
+    /*
+     * Additional product information
+     */
+
+    const details = product.details || {};
+
+    if (details.color) {
+      productSchema.color =
+        details.color;
+    }
+
+    if (details.material) {
+      productSchema.material =
+        details.material;
+    } else if (details.fabric) {
+      productSchema.material =
+        details.fabric;
+    }
+
+    if (
+      Array.isArray(product.sizes) &&
+      product.sizes.length > 0
+    ) {
+      productSchema.size =
+        product.sizes.join(', ');
+    }
+
+    /*
+     * Insert JSON-LD
+     */
+
+    let productScript =
+      document.head.querySelector(
+        'script[data-seo="product-jsonld"]'
+      ) as HTMLScriptElement | null;
+
+    if (!productScript) {
+      productScript =
+        document.createElement(
+          'script'
+        );
+
+      productScript.type =
+        'application/ld+json';
+
+      productScript.setAttribute(
+        'data-seo',
+        'product-jsonld'
+      );
+
+      document.head.appendChild(
+        productScript
+      );
+    }
+
+    productScript.textContent =
+      JSON.stringify(
+        productSchema
+      );
+
+    /*
+     * -------------------------------------------------------
+     * BREADCRUMB JSON-LD
+     * -------------------------------------------------------
+     */
+
+    const breadcrumbSchema = {
+      '@context':
+        'https://schema.org',
+      '@type':
+        'BreadcrumbList',
+      itemListElement: [
+        {
+          '@type':
+            'ListItem',
+          position: 1,
+          name: 'Home',
+          item: siteUrl,
+        },
+        {
+          '@type':
+            'ListItem',
+          position: 2,
+          name:
+            product.categoryName ||
+            'Shop',
+          item: `${siteUrl}/shop`,
+        },
+        {
+          '@type':
+            'ListItem',
+          position: 3,
+          name: product.name,
+          item: productUrl,
+        },
+      ],
+    };
+
+    let breadcrumbScript =
+      document.head.querySelector(
+        'script[data-seo="breadcrumb-jsonld"]'
+      ) as HTMLScriptElement | null;
+
+    if (!breadcrumbScript) {
+      breadcrumbScript =
+        document.createElement(
+          'script'
+        );
+
+      breadcrumbScript.type =
+        'application/ld+json';
+
+      breadcrumbScript.setAttribute(
+        'data-seo',
+        'breadcrumb-jsonld'
+      );
+
+      document.head.appendChild(
+        breadcrumbScript
+      );
+    }
+
+    breadcrumbScript.textContent =
+      JSON.stringify(
+        breadcrumbSchema
+      );
+
+    /*
+     * -------------------------------------------------------
+     * ORGANIZATION JSON-LD
+     * -------------------------------------------------------
+     */
+
+    const organizationSchema = {
+      '@context':
+        'https://schema.org',
+      '@type':
+        'Organization',
+      name: 'Sanu Builds',
+      url: siteUrl,
+      logo:
+        `${siteUrl}/logo.png`,
+    };
+
+    let organizationScript =
+      document.head.querySelector(
+        'script[data-seo="organization-jsonld"]'
+      ) as HTMLScriptElement | null;
+
+    if (!organizationScript) {
+      organizationScript =
+        document.createElement(
+          'script'
+        );
+
+      organizationScript.type =
+        'application/ld+json';
+
+      organizationScript.setAttribute(
+        'data-seo',
+        'organization-jsonld'
+      );
+
+      document.head.appendChild(
+        organizationScript
+      );
+    }
+
+    organizationScript.textContent =
+      JSON.stringify(
+        organizationSchema
+      );
+
+    /*
+     * Cleanup only structured data
+     * created by this page.
+     */
+
+    return () => {
+      document.head
+        .querySelector(
+          'script[data-seo="product-jsonld"]'
+        )
+        ?.remove();
+
+      document.head
+        .querySelector(
+          'script[data-seo="breadcrumb-jsonld"]'
+        )
+        ?.remove();
+
+      document.head
+        .querySelector(
+          'script[data-seo="organization-jsonld"]'
+        )
+        ?.remove();
+    };
+  }, [
+    product,
+    productUrl,
+    seoTitle,
+    seoDescription,
+    seoImage,
+    seoPrice,
+    seoCompareAtPrice,
+    seoAvailability,
+    siteUrl,
+  ]);
+
+  /*
+   * ---------------------------------------------------------
    * INDIAN CURRENCY FORMAT
    * ---------------------------------------------------------
    */
 
   const formatPrice = (value: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
+    return new Intl.NumberFormat(
+      'en-IN',
+      {
+        style: 'currency',
+        currency: 'INR',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }
+    ).format(value);
   };
 
   /*
@@ -64,15 +652,23 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
    * ---------------------------------------------------------
    */
 
-  const sizes = Array.isArray(product.sizes)
+  const sizes = Array.isArray(
+    product.sizes
+  )
     ? product.sizes.filter(Boolean)
     : [];
 
-  const colors = Array.isArray(product.colors)
-    ? product.colors.filter((color) => color?.name)
+  const colors = Array.isArray(
+    product.colors
+  )
+    ? product.colors.filter(
+        (color) => color?.name
+      )
     : [];
 
-  const variants = Array.isArray(product.variants)
+  const variants = Array.isArray(
+    product.variants
+  )
     ? product.variants
     : [];
 
@@ -82,21 +678,33 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
    * ---------------------------------------------------------
    */
 
-  const [selectedSize, setSelectedSize] = useState<string>(
-    sizes[0] || ''
-  );
+  const [selectedSize, setSelectedSize] =
+    useState<string>(
+      sizes[0] || ''
+    );
 
-  const [selectedColor, setSelectedColor] = useState<string>(
+  const [
+    selectedColor,
+    setSelectedColor,
+  ] = useState<string>(
     colors[0]?.name || ''
   );
 
-  const [quantity, setQuantity] = useState<number>(1);
+  const [quantity, setQuantity] =
+    useState<number>(1);
 
-  const [isSizeGuideOpen, setIsSizeGuideOpen] =
-    useState<boolean>(false);
+  const [
+    isSizeGuideOpen,
+    setIsSizeGuideOpen,
+  ] = useState<boolean>(false);
 
-  const [openAccordion, setOpenAccordion] =
-    useState<AccordionKey>('specs');
+  const [
+    openAccordion,
+    setOpenAccordion,
+  ] =
+    useState<AccordionKey>(
+      'specs'
+    );
 
   /*
    * ---------------------------------------------------------
@@ -105,23 +713,36 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
    */
 
   useEffect(() => {
-    const firstSize = sizes[0] || '';
+    const firstSize =
+      sizes[0] || '';
 
     const sizeStillValid =
-      selectedSize && sizes.includes(selectedSize);
+      selectedSize &&
+      sizes.includes(
+        selectedSize
+      );
 
     if (!sizeStillValid) {
-      setSelectedSize(firstSize);
+      setSelectedSize(
+        firstSize
+      );
     }
 
-    const firstColor = colors[0]?.name || '';
+    const firstColor =
+      colors[0]?.name || '';
 
     const colorStillValid =
       selectedColor &&
-      colors.some((color) => color.name === selectedColor);
+      colors.some(
+        (color) =>
+          color.name ===
+          selectedColor
+      );
 
     if (!colorStillValid) {
-      setSelectedColor(firstColor);
+      setSelectedColor(
+        firstColor
+      );
     }
 
     setQuantity(1);
@@ -133,7 +754,10 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
    * ---------------------------------------------------------
    */
 
-  const isSaved = isInWishlist(product.id);
+  const isSaved =
+    isInWishlist(
+      product.id
+    );
 
   /*
    * ---------------------------------------------------------
@@ -141,23 +765,29 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
    * ---------------------------------------------------------
    */
 
-  const currentVariant = useMemo(() => {
-    if (!selectedSize || !selectedColor) {
-      return null;
-    }
+  const currentVariant =
+    useMemo(() => {
+      if (
+        !selectedSize ||
+        !selectedColor
+      ) {
+        return null;
+      }
 
-    return (
-      variants.find(
-        (variant) =>
-          variant.size === selectedSize &&
-          variant.color === selectedColor
-      ) || null
-    );
-  }, [
-    variants,
-    selectedSize,
-    selectedColor,
-  ]);
+      return (
+        variants.find(
+          (variant) =>
+            variant.size ===
+              selectedSize &&
+            variant.color ===
+              selectedColor
+        ) || null
+      );
+    }, [
+      variants,
+      selectedSize,
+      selectedColor,
+    ]);
 
   /*
    * ---------------------------------------------------------
@@ -169,29 +799,45 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     if (currentVariant) {
       return Math.max(
         0,
-        Number(currentVariant.stock || 0)
+        Number(
+          currentVariant.stock ||
+            0
+        )
       );
     }
 
     return Math.max(
       0,
-      Number(product.stock || 0)
+      Number(
+        product.stock || 0
+      )
     );
-  }, [currentVariant, product.stock]);
+  }, [
+    currentVariant,
+    product.stock,
+  ]);
 
-  const isOutOfStock = maxStock <= 0;
+  const isOutOfStock =
+    maxStock <= 0;
 
   useEffect(() => {
-    setQuantity((currentQuantity) => {
-      if (maxStock <= 0) {
-        return 1;
-      }
+    setQuantity(
+      (currentQuantity) => {
+        if (
+          maxStock <= 0
+        ) {
+          return 1;
+        }
 
-      return Math.min(
-        Math.max(1, currentQuantity),
-        maxStock
-      );
-    });
+        return Math.min(
+          Math.max(
+            1,
+            currentQuantity
+          ),
+          maxStock
+        );
+      }
+    );
   }, [maxStock]);
 
   /*
@@ -200,21 +846,33 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
    * ---------------------------------------------------------
    */
 
-  const price = Number(product.price || 0);
-
-  const compareAtPrice = Number(
-    product.compareAtPrice || 0
+  const price = Number(
+    product.price || 0
   );
 
+  const compareAtPrice =
+    Number(
+      product.compareAtPrice ||
+        0
+    );
+
   const calculatedDiscountPercentage =
-    compareAtPrice > price && price > 0
+    compareAtPrice >
+      price &&
+    price > 0
       ? Math.round(
-          ((compareAtPrice - price) / compareAtPrice) * 100
+          ((compareAtPrice -
+            price) /
+            compareAtPrice) *
+            100
         )
       : 0;
 
   const discountPercentage =
-    Number(product.discountPercentage || 0) ||
+    Number(
+      product.discountPercentage ||
+        0
+    ) ||
     calculatedDiscountPercentage;
 
   /*
@@ -225,13 +883,22 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
   const rating = Math.min(
     5,
-    Math.max(0, Number(product.rating ?? 0))
+    Math.max(
+      0,
+      Number(
+        product.rating ?? 0
+      )
+    )
   );
 
-  const reviewCount = Math.max(
-    0,
-    Number(product.reviewCount ?? 0)
-  );
+  const reviewCount =
+    Math.max(
+      0,
+      Number(
+        product.reviewCount ??
+          0
+      )
+    );
 
   /*
    * ---------------------------------------------------------
@@ -239,14 +906,16 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
    * ---------------------------------------------------------
    */
 
-  const details = product.details || {};
+  const details =
+    product.details || {};
 
   const fabric =
     details.fabric ||
     'Fabric details not provided';
 
   const gsm =
-    details.gsm !== undefined &&
+    details.gsm !==
+      undefined &&
     details.gsm !== null &&
     details.gsm !== ''
       ? details.gsm
@@ -261,7 +930,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     'Collar details not provided';
 
   const modelDetails =
-    details.modelDetails || '';
+    details.modelDetails ||
+    '';
 
   const washCare =
     details.washCare ||
@@ -298,71 +968,113 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
    * ---------------------------------------------------------
    */
 
-  const relatedProducts = useMemo(() => {
-    const currentTags = Array.isArray(product.tags)
-      ? product.tags.map((tag) => tag.toLowerCase())
-      : [];
+  const relatedProducts =
+    useMemo(() => {
+      const currentTags =
+        Array.isArray(
+          product.tags
+        )
+          ? product.tags.map(
+              (tag) =>
+                tag.toLowerCase()
+            )
+          : [];
 
-    const candidates = allProducts
-      .filter((item) => item.id !== product.id)
-      .filter((item) => item.active !== false);
+      const candidates =
+        allProducts
+          .filter(
+            (item) =>
+              item.id !==
+              product.id
+          )
+          .filter(
+            (item) =>
+              item.active !==
+              false
+          );
 
-    const scored = candidates.map((item) => {
-      let score = 0;
+      const scored =
+        candidates.map(
+          (item) => {
+            let score = 0;
 
-      if (
-        product.categoryId &&
-        item.categoryId === product.categoryId
-      ) {
-        score += 5;
-      }
+            if (
+              product.categoryId &&
+              item.categoryId ===
+                product.categoryId
+            ) {
+              score += 5;
+            }
 
-      if (
-        product.brand &&
-        item.brand &&
-        item.brand.toLowerCase() ===
-          product.brand.toLowerCase()
-      ) {
-        score += 3;
-      }
+            if (
+              product.brand &&
+              item.brand &&
+              item.brand.toLowerCase() ===
+                product.brand.toLowerCase()
+            ) {
+              score += 3;
+            }
 
-      const itemTags = Array.isArray(item.tags)
-        ? item.tags.map((tag) => tag.toLowerCase())
-        : [];
+            const itemTags =
+              Array.isArray(
+                item.tags
+              )
+                ? item.tags.map(
+                    (tag) =>
+                      tag.toLowerCase()
+                  )
+                : [];
 
-      const matchingTags = itemTags.filter((tag) =>
-        currentTags.includes(tag)
-      ).length;
+            const matchingTags =
+              itemTags.filter(
+                (tag) =>
+                  currentTags.includes(
+                    tag
+                  )
+              ).length;
 
-      score += matchingTags;
+            score +=
+              matchingTags;
 
-      if (item.featured) {
-        score += 1;
-      }
+            if (
+              item.featured
+            ) {
+              score += 1;
+            }
 
-      if (item.bestseller) {
-        score += 1;
-      }
+            if (
+              item.bestseller
+            ) {
+              score += 1;
+            }
 
-      return {
-        item,
-        score,
-      };
-    });
+            return {
+              item,
+              score,
+            };
+          }
+        );
 
-    return scored
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 4)
-      .map(({ item }) => item);
-  }, [
-    allProducts,
-    product.id,
-    product.categoryId,
-    product.brand,
-    product.tags,
-    product.featured,
-    product.bestseller,
-  ]);
+      return scored
+        .sort(
+          (a, b) =>
+            b.score -
+            a.score
+        )
+        .slice(0, 4)
+        .map(
+          ({ item }) =>
+            item
+        );
+    }, [
+      allProducts,
+      product.id,
+      product.categoryId,
+      product.brand,
+      product.tags,
+      product.featured,
+      product.bestseller,
+    ]);
 
   /*
    * ---------------------------------------------------------
@@ -370,78 +1082,131 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
    * ---------------------------------------------------------
    */
 
-  const handleColorChange = (color: string) => {
-    setSelectedColor(color);
+  const handleColorChange = (
+    color: string
+  ) => {
+    setSelectedColor(
+      color
+    );
 
-    const matchingSizes = sizes.filter((size) => {
-      const variant = variants.find(
-        (item) =>
-          item.size === size &&
-          item.color === color
-      );
+    const matchingSizes =
+      sizes.filter(
+        (size) => {
+          const variant =
+            variants.find(
+              (item) =>
+                item.size ===
+                  size &&
+                item.color ===
+                  color
+            );
 
-      return (
-        !variant ||
-        Number(variant.stock || 0) > 0
+          return (
+            !variant ||
+            Number(
+              variant.stock ||
+                0
+            ) > 0
+          );
+        }
       );
-    });
 
     if (
       selectedSize &&
-      matchingSizes.includes(selectedSize)
+      matchingSizes.includes(
+        selectedSize
+      )
     ) {
       return;
     }
 
-    if (matchingSizes.length > 0) {
-      setSelectedSize(matchingSizes[0]);
-    } else if (sizes.length > 0) {
-      setSelectedSize(sizes[0]);
+    if (
+      matchingSizes.length >
+      0
+    ) {
+      setSelectedSize(
+        matchingSizes[0]
+      );
+    } else if (
+      sizes.length > 0
+    ) {
+      setSelectedSize(
+        sizes[0]
+      );
     }
   };
 
-  const handleSizeChange = (size: string) => {
-    setSelectedSize(size);
-  };
-
-  const handleQuantityDecrease = () => {
-    setQuantity((currentQuantity) =>
-      Math.max(1, currentQuantity - 1)
+  const handleSizeChange = (
+    size: string
+  ) => {
+    setSelectedSize(
+      size
     );
   };
 
-  const handleQuantityIncrease = () => {
-    if (maxStock <= 0) {
-      return;
-    }
+  const handleQuantityDecrease =
+    () => {
+      setQuantity(
+        (currentQuantity) =>
+          Math.max(
+            1,
+            currentQuantity -
+              1
+          )
+      );
+    };
 
-    setQuantity((currentQuantity) =>
-      Math.min(
-        maxStock,
-        currentQuantity + 1
-      )
-    );
-  };
+  const handleQuantityIncrease =
+    () => {
+      if (
+        maxStock <= 0
+      ) {
+        return;
+      }
+
+      setQuantity(
+        (currentQuantity) =>
+          Math.min(
+            maxStock,
+            currentQuantity +
+              1
+          )
+      );
+    };
 
   const handleAddToCart = () => {
-    if (isOutOfStock) {
+    if (
+      isOutOfStock
+    ) {
       toastError(
-        `Selected ${selectedSize || 'size'} / ${
-          selectedColor || 'color'
+        `Selected ${
+          selectedSize ||
+          'size'
+        } / ${
+          selectedColor ||
+          'color'
         } is currently out of stock.`
       );
 
       return;
     }
 
-    if (quantity > maxStock) {
+    if (
+      quantity >
+      maxStock
+    ) {
       toastError(
         `Only ${maxStock} item${
-          maxStock === 1 ? '' : 's'
+          maxStock === 1
+            ? ''
+            : 's'
         } available.`
       );
 
-      setQuantity(maxStock);
+      setQuantity(
+        maxStock
+      );
+
       return;
     }
 
@@ -452,28 +1217,44 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
       quantity
     );
 
-    success('Product added to your bag.');
+    success(
+      'Product added to your bag.'
+    );
   };
 
   const handleBuyNow = () => {
-    if (isOutOfStock) {
+    if (
+      isOutOfStock
+    ) {
       toastError(
-        `Selected ${selectedSize || 'size'} / ${
-          selectedColor || 'color'
+        `Selected ${
+          selectedSize ||
+          'size'
+        } / ${
+          selectedColor ||
+          'color'
         } is currently out of stock.`
       );
 
       return;
     }
 
-    if (quantity > maxStock) {
+    if (
+      quantity >
+      maxStock
+    ) {
       toastError(
         `Only ${maxStock} item${
-          maxStock === 1 ? '' : 's'
+          maxStock === 1
+            ? ''
+            : 's'
         } available.`
       );
 
-      setQuantity(maxStock);
+      setQuantity(
+        maxStock
+      );
+
       return;
     }
 
@@ -484,12 +1265,17 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
       quantity
     );
 
-    onNavigate('/checkout');
+    onNavigate(
+      '/checkout'
+    );
   };
 
-  const handleWishlist = () => {
-    toggleWishlist(product);
-  };
+  const handleWishlist =
+    () => {
+      toggleWishlist(
+        product
+      );
+    };
 
   /*
    * ---------------------------------------------------------
@@ -500,8 +1286,11 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   const toggleAccordion = (
     key: AccordionKey
   ) => {
-    setOpenAccordion((current) =>
-      current === key ? '' : key
+    setOpenAccordion(
+      (current) =>
+        current === key
+          ? ''
+          : key
     );
   };
 
@@ -511,16 +1300,22 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
    * ---------------------------------------------------------
    */
 
-  const getSizeVariant = (size: string) => {
-    if (!selectedColor) {
+  const getSizeVariant = (
+    size: string
+  ) => {
+    if (
+      !selectedColor
+    ) {
       return null;
     }
 
     return (
       variants.find(
         (variant) =>
-          variant.size === size &&
-          variant.color === selectedColor
+          variant.size ===
+            size &&
+          variant.color ===
+            selectedColor
       ) || null
     );
   };
@@ -528,17 +1323,28 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   const isSizeOutOfStock = (
     size: string
   ) => {
-    const variant = getSizeVariant(size);
+    const variant =
+      getSizeVariant(
+        size
+      );
 
-    if (variants.length > 0) {
+    if (
+      variants.length >
+      0
+    ) {
       return (
         !variant ||
-        Number(variant.stock || 0) <= 0
+        Number(
+          variant.stock ||
+            0
+        ) <= 0
       );
     }
 
     return (
-      Number(product.stock || 0) <= 0
+      Number(
+        product.stock || 0
+      ) <= 0
     );
   };
 
@@ -548,29 +1354,39 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
    * ---------------------------------------------------------
    */
 
-  const renderRatingStars = () => {
-    return [1, 2, 3, 4, 5].map(
-      (starNumber) => {
-        const filled =
-          rating >= starNumber;
+  const renderRatingStars =
+    () => {
+      return [
+        1, 2, 3, 4, 5,
+      ].map(
+        (starNumber) => {
+          const filled =
+            rating >=
+            starNumber;
 
-        const partiallyFilled =
-          rating >= starNumber - 0.5 &&
-          rating < starNumber;
+          const partiallyFilled =
+            rating >=
+              starNumber -
+                0.5 &&
+            rating <
+              starNumber;
 
-        return (
-          <Star
-            key={starNumber}
-            className={`w-4 h-4 ${
-              filled || partiallyFilled
-                ? 'fill-amber-400 text-amber-400'
-                : 'text-neutral-300'
-            }`}
-          />
-        );
-      }
-    );
-  };
+          return (
+            <Star
+              key={
+                starNumber
+              }
+              className={`w-4 h-4 ${
+                filled ||
+                partiallyFilled
+                  ? 'fill-amber-400 text-amber-400'
+                  : 'text-neutral-300'
+              }`}
+            />
+          );
+        }
+      );
+    };
 
   /*
    * ---------------------------------------------------------
@@ -579,7 +1395,49 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
    */
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-16">
+    <main
+      itemScope
+      itemType="https://schema.org/Product"
+      className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-16"
+    >
+      <meta
+        itemProp="name"
+        content={
+          product.name
+        }
+      />
+
+      <meta
+        itemProp="description"
+        content={
+          seoDescription
+        }
+      />
+
+      <meta
+        itemProp="url"
+        content={
+          productUrl
+        }
+      />
+
+      {seoImage && (
+        <meta
+          itemProp="image"
+          content={
+            seoImage
+          }
+        />
+      )}
+
+      {product.sku && (
+        <meta
+          itemProp="sku"
+          content={
+            product.sku
+          }
+        />
+      )}
 
       {/* =====================================================
           BREADCRUMBS
@@ -591,7 +1449,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
       >
         <button
           type="button"
-          onClick={() => onNavigate('/')}
+          onClick={() =>
+            onNavigate('/')
+          }
           className="hover:text-neutral-900 transition-colors"
         >
           Home
@@ -601,15 +1461,23 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
         <button
           type="button"
-          onClick={() => onNavigate('/shop')}
+          onClick={() =>
+            onNavigate(
+              '/shop'
+            )
+          }
           className="hover:text-neutral-900 transition-colors"
         >
-          {product.categoryName || 'Shop'}
+          {product.categoryName ||
+            'Shop'}
         </button>
 
         <span>/</span>
 
-        <span className="text-neutral-900 font-semibold truncate">
+        <span
+          className="text-neutral-900 font-semibold truncate"
+          aria-current="page"
+        >
           {product.name}
         </span>
       </nav>
@@ -619,50 +1487,49 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
       ====================================================== */}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-start">
-
-        {/* ===================================================
-            PRODUCT GALLERY
-        ==================================================== */}
-
         <div className="lg:col-span-7">
           <ProductGallery
-            images={product.images || []}
-            productName={product.name}
+            images={
+              product.images ||
+              []
+            }
+            productName={
+              product.name
+            }
           />
         </div>
 
-        {/* ===================================================
-            PRODUCT INFORMATION
-        ==================================================== */}
-
         <div className="lg:col-span-5 space-y-6">
-
           {/* BRAND + TITLE */}
 
           <div>
             <div className="flex items-center justify-between gap-4">
-
               <span className="text-xs font-black uppercase tracking-widest text-neutral-400">
-                {product.brand || 'Brand'}
+                {product.brand ||
+                  'Brand'}
                 {' • '}
-                {product.categoryName || 'Apparel'}
+                {product.categoryName ||
+                  'Apparel'}
               </span>
 
               {product.sku && (
                 <span className="text-[11px] font-mono font-medium text-neutral-400 shrink-0">
-                  SKU: {product.sku}
+                  SKU:{' '}
+                  {product.sku}
                 </span>
               )}
             </div>
 
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-neutral-900 tracking-tight mt-1">
+            <h1
+              itemProp="name"
+              className="text-xl sm:text-2xl lg:text-3xl font-black text-neutral-900 tracking-tight mt-1"
+            >
               {product.name}
             </h1>
 
             {/* RATING */}
 
             <div className="flex items-center gap-2 mt-2">
-
               <div
                 className="flex items-center"
                 aria-label={`${rating} out of 5 stars`}
@@ -672,57 +1539,92 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
               <span className="text-xs font-bold text-neutral-900">
                 {rating > 0
-                  ? rating.toFixed(1)
+                  ? rating.toFixed(
+                      1
+                    )
                   : 'No rating'}
               </span>
 
               <span className="text-xs text-neutral-400">
                 (
                 {reviewCount}{' '}
-                {reviewCount === 1
+                {reviewCount ===
+                1
                   ? 'review'
                   : 'reviews'}
                 )
               </span>
-
             </div>
           </div>
 
-          {/* =================================================
-              PRICE
-          ================================================== */}
+          {/* PRICE */}
 
-          <div className="flex items-baseline gap-3 pb-4 border-b border-neutral-100">
+          <div
+            itemProp="offers"
+            itemScope
+            itemType="https://schema.org/Offer"
+            className="flex items-baseline gap-3 pb-4 border-b border-neutral-100"
+          >
+            <meta
+              itemProp="priceCurrency"
+              content="INR"
+            />
 
-            <span className="text-2xl sm:text-3xl font-black text-neutral-900">
-              {formatPrice(price)}
+            <meta
+              itemProp="availability"
+              content={
+                seoAvailability
+              }
+            />
+
+            <meta
+              itemProp="url"
+              content={
+                productUrl
+              }
+            />
+
+            <span
+              itemProp="price"
+              content={price.toFixed(
+                2
+              )}
+              className="text-2xl sm:text-3xl font-black text-neutral-900"
+            >
+              {formatPrice(
+                price
+              )}
             </span>
 
-            {compareAtPrice > price && (
+            {compareAtPrice >
+              price && (
               <>
                 <span className="text-base text-neutral-400 line-through">
-                  {formatPrice(compareAtPrice)}
+                  {formatPrice(
+                    compareAtPrice
+                  )}
                 </span>
 
-                {discountPercentage > 0 && (
+                {discountPercentage >
+                  0 && (
                   <span className="px-2 py-0.5 bg-neutral-100 text-neutral-900 border border-neutral-300 text-xs font-bold rounded">
-                    Save {discountPercentage}%
+                    Save{' '}
+                    {
+                      discountPercentage
+                    }
+                    %
                   </span>
                 )}
               </>
             )}
-
           </div>
 
-          {/* =================================================
-              COLOR SELECTOR
-          ================================================== */}
+          {/* COLOR SELECTOR */}
 
-          {colors.length > 0 && (
+          {colors.length >
+            0 && (
             <div>
-
               <div className="flex items-center justify-between mb-2">
-
                 <span className="text-xs font-bold uppercase tracking-wider text-neutral-800">
                   Color:{' '}
                   <span className="text-neutral-900 font-black">
@@ -730,57 +1632,57 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                       'Select color'}
                   </span>
                 </span>
-
               </div>
 
               <div className="flex items-center gap-2.5 flex-wrap">
-
-                {colors.map((color) => (
-                  <button
-                    key={color.name}
-                    type="button"
-                    onClick={() =>
-                      handleColorChange(
+                {colors.map(
+                  (color) => (
+                    <button
+                      key={
                         color.name
-                      )
-                    }
-                    className={`relative p-1 rounded-full border transition-all ${
-                      selectedColor ===
-                      color.name
-                        ? 'border-neutral-950 ring-2 ring-neutral-950'
-                        : 'border-neutral-300 hover:border-neutral-700'
-                    }`}
-                    title={color.name}
-                    aria-label={`Select ${color.name}`}
-                    aria-pressed={
-                      selectedColor ===
-                      color.name
-                    }
-                  >
-                    <span
-                      className="block w-6 h-6 rounded-full border border-neutral-200"
-                      style={{
-                        backgroundColor:
-                          color.hex ||
-                          '#000000',
-                      }}
-                    />
-                  </button>
-                ))}
-
+                      }
+                      type="button"
+                      onClick={() =>
+                        handleColorChange(
+                          color.name
+                        )
+                      }
+                      className={`relative p-1 rounded-full border transition-all ${
+                        selectedColor ===
+                        color.name
+                          ? 'border-neutral-950 ring-2 ring-neutral-950'
+                          : 'border-neutral-300 hover:border-neutral-700'
+                      }`}
+                      title={
+                        color.name
+                      }
+                      aria-label={`Select ${color.name}`}
+                      aria-pressed={
+                        selectedColor ===
+                        color.name
+                      }
+                    >
+                      <span
+                        className="block w-6 h-6 rounded-full border border-neutral-200"
+                        style={{
+                          backgroundColor:
+                            color.hex ||
+                            '#000000',
+                        }}
+                      />
+                    </button>
+                  )
+                )}
               </div>
             </div>
           )}
 
-          {/* =================================================
-              SIZE SELECTOR
-          ================================================== */}
+          {/* SIZE SELECTOR */}
 
-          {sizes.length > 0 && (
+          {sizes.length >
+            0 && (
             <div>
-
               <div className="flex items-center justify-between mb-2">
-
                 <span className="text-xs font-bold uppercase tracking-wider text-neutral-800">
                   Size:{' '}
                   <span className="text-neutral-900 font-black">
@@ -792,7 +1694,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 <button
                   type="button"
                   onClick={() =>
-                    setIsSizeGuideOpen(true)
+                    setIsSizeGuideOpen(
+                      true
+                    )
                   }
                   className="text-xs font-semibold text-neutral-600 hover:text-neutral-950 flex items-center gap-1 underline"
                 >
@@ -801,105 +1705,113 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                     Size Guide
                   </span>
                 </button>
-
               </div>
 
               <div
                 className={`grid gap-2 ${
-                  sizes.length >= 5
+                  sizes.length >=
+                  5
                     ? 'grid-cols-5'
-                    : sizes.length === 4
+                    : sizes.length ===
+                      4
                     ? 'grid-cols-4'
-                    : sizes.length === 3
+                    : sizes.length ===
+                      3
                     ? 'grid-cols-3'
-                    : sizes.length === 2
+                    : sizes.length ===
+                      2
                     ? 'grid-cols-2'
                     : 'grid-cols-1'
                 }`}
               >
+                {sizes.map(
+                  (size) => {
+                    const isOOS =
+                      isSizeOutOfStock(
+                        size
+                      );
 
-                {sizes.map((size) => {
-                  const isOOS =
-                    isSizeOutOfStock(
-                      size
-                    );
-
-                  return (
-                    <button
-                      key={size}
-                      type="button"
-                      disabled={isOOS}
-                      onClick={() =>
-                        handleSizeChange(
+                    return (
+                      <button
+                        key={
                           size
-                        )
-                      }
-                      className={`py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg border transition-all ${
-                        selectedSize === size
-                          ? 'bg-neutral-950 text-white border-neutral-950 shadow-xs'
-                          : isOOS
-                          ? 'bg-neutral-100 text-neutral-300 border-neutral-200 line-through cursor-not-allowed'
-                          : 'bg-white text-neutral-800 border-neutral-300 hover:border-neutral-950'
-                      }`}
-                      aria-label={`Size ${size}`}
-                      aria-pressed={
-                        selectedSize === size
-                      }
-                    >
-                      {size}
-                    </button>
-                  );
-                })}
-
+                        }
+                        type="button"
+                        disabled={
+                          isOOS
+                        }
+                        onClick={() =>
+                          handleSizeChange(
+                            size
+                          )
+                        }
+                        className={`py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg border transition-all ${
+                          selectedSize ===
+                          size
+                            ? 'bg-neutral-950 text-white border-neutral-950 shadow-xs'
+                            : isOOS
+                            ? 'bg-neutral-100 text-neutral-300 border-neutral-200 line-through cursor-not-allowed'
+                            : 'bg-white text-neutral-800 border-neutral-300 hover:border-neutral-950'
+                        }`}
+                        aria-label={`Size ${size}`}
+                        aria-pressed={
+                          selectedSize ===
+                          size
+                        }
+                      >
+                        {size}
+                      </button>
+                    );
+                  }
+                )}
               </div>
 
-              {/* INVENTORY STATUS */}
-
               <div className="mt-2 text-xs">
-
                 {isOutOfStock ? (
                   <span className="text-rose-600 font-bold">
-                    Out of stock in{' '}
+                    Out of stock
+                    in{' '}
                     {selectedSize ||
                       'selected size'}
                     {' / '}
                     {selectedColor ||
                       'selected color'}
                   </span>
-                ) : maxStock < 10 ? (
+                ) : maxStock <
+                  10 ? (
                   <span className="text-amber-600 font-bold">
-                    Only {maxStock}{' '}
-                    left in stock —
-                    order soon
+                    Only{' '}
+                    {
+                      maxStock
+                    }{' '}
+                    left in
+                    stock —
+                    order
+                    soon
                   </span>
                 ) : (
                   <span className="text-emerald-700 font-medium flex items-center gap-1">
                     <Check className="w-3.5 h-3.5" />
-                    In stock and ready
-                    to dispatch
+                    In stock
+                    and ready
+                    to
+                    dispatch
                   </span>
                 )}
-
               </div>
             </div>
           )}
 
-          {/* =================================================
-              QUANTITY + ACTIONS
-          ================================================== */}
+          {/* QUANTITY + ACTIONS */}
 
           <div className="space-y-3 pt-2">
-
             <div className="flex items-center gap-3">
-
-              {/* QUANTITY */}
-
               <div className="flex items-center border border-neutral-300 rounded-lg p-1 bg-neutral-50 shrink-0">
-
                 <button
                   type="button"
                   disabled={
-                    quantity <= 1 ||
+                    quantity <=
+                      1 ||
                     isOutOfStock
                   }
                   onClick={
@@ -930,15 +1842,14 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 >
                   <Plus className="w-4 h-4" />
                 </button>
-
               </div>
-
-              {/* ADD TO CART */}
 
               <button
                 id="add-to-cart-btn"
                 type="button"
-                disabled={isOutOfStock}
+                disabled={
+                  isOutOfStock
+                }
                 onClick={
                   handleAddToCart
                 }
@@ -952,8 +1863,6 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                     : 'Add To Bag'}
                 </span>
               </button>
-
-              {/* WISHLIST */}
 
               <button
                 id="pdp-wishlist-btn"
@@ -971,7 +1880,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                     ? 'Remove from wishlist'
                     : 'Add to wishlist'
                 }
-                aria-pressed={isSaved}
+                aria-pressed={
+                  isSaved
+                }
               >
                 <Heart
                   className={`w-4 h-4 ${
@@ -981,7 +1892,6 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                   }`}
                 />
               </button>
-
             </div>
 
             {/* BUY NOW */}
@@ -989,7 +1899,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
             <button
               id="buy-now-btn"
               type="button"
-              disabled={isOutOfStock}
+              disabled={
+                isOutOfStock
+              }
               onClick={
                 handleBuyNow
               }
@@ -1003,56 +1915,60 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                   : 'Instant Buy Now'}
               </span>
             </button>
-
           </div>
 
-          {/* =================================================
-              DYNAMIC VALUE PROPS
-          ================================================== */}
+          {/* VALUE PROPS */}
 
           <div className="grid grid-cols-3 gap-2 pt-4 border-t border-neutral-100 text-center text-[11px] text-neutral-600">
-
             <div
               className="p-2 bg-neutral-50 rounded-lg"
-              title={freeShippingText}
+              title={
+                freeShippingText
+              }
             >
               <Truck className="w-4 h-4 mx-auto mb-1 text-neutral-900" />
 
               <span className="block line-clamp-2">
-                {freeShippingText}
+                {
+                  freeShippingText
+                }
               </span>
             </div>
 
             <div
               className="p-2 bg-neutral-50 rounded-lg"
-              title={weightText}
+              title={
+                weightText
+              }
             >
               <ShieldCheck className="w-4 h-4 mx-auto mb-1 text-neutral-900" />
 
               <span className="block line-clamp-2">
-                {weightText}
+                {
+                  weightText
+                }
               </span>
             </div>
 
             <div
               className="p-2 bg-neutral-50 rounded-lg"
-              title={returnText}
+              title={
+                returnText
+              }
             >
               <RotateCcw className="w-4 h-4 mx-auto mb-1 text-neutral-900" />
 
               <span className="block line-clamp-2">
-                {returnText}
+                {
+                  returnText
+                }
               </span>
             </div>
-
           </div>
 
-          {/* =================================================
-              PRODUCT ACCORDIONS
-          ================================================== */}
+          {/* PRODUCT ACCORDIONS */}
 
           <div className="border-t border-neutral-200 divide-y divide-neutral-200">
-
             {/* FABRIC */}
 
             <div>
@@ -1085,24 +2001,29 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               {openAccordion ===
                 'specs' && (
                 <div className="pb-4 text-xs text-neutral-600 space-y-2 leading-relaxed animate-in fade-in duration-150">
-
                   {product.description && (
-                    <p>
-                      {product.description}
+                    <p itemProp="description">
+                      {
+                        product.description
+                      }
                     </p>
                   )}
 
                   <ul className="list-disc pl-4 space-y-1 text-neutral-700">
-
                     <li>
                       Fabric:{' '}
-                      {fabric}
+                      {
+                        fabric
+                      }
                     </li>
 
-                    {gsm !== null && (
+                    {gsm !==
+                      null && (
                       <li>
-                        Fabric Weight:{' '}
-                        {gsm} GSM
+                        Fabric
+                        Weight:{' '}
+                        {gsm}{' '}
+                        GSM
                       </li>
                     )}
 
@@ -1113,15 +2034,18 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
                     <li>
                       Collar:{' '}
-                      {collar}
+                      {
+                        collar
+                      }
                     </li>
 
                     {modelDetails && (
                       <li>
-                        {modelDetails}
+                        {
+                          modelDetails
+                        }
                       </li>
                     )}
-
                   </ul>
                 </div>
               )}
@@ -1159,7 +2083,6 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               {openAccordion ===
                 'wash' && (
                 <div className="pb-4 text-xs text-neutral-600 space-y-1.5 leading-relaxed animate-in fade-in duration-150">
-
                   {Array.isArray(
                     washCare
                   ) ? (
@@ -1169,19 +2092,25 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                         index: number
                       ) => (
                         <p
-                          key={index}
+                          key={
+                            index
+                          }
                         >
                           •{' '}
-                          {instruction}
+                          {
+                            instruction
+                          }
                         </p>
                       )
                     )
                   ) : (
                     <p>
-                      • {washCare}
+                      •{' '}
+                      {
+                        washCare
+                      }
                     </p>
                   )}
-
                 </div>
               )}
             </div>
@@ -1218,21 +2147,23 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               {openAccordion ===
                 'shipping' && (
                 <div className="pb-4 text-xs text-neutral-600 space-y-2 leading-relaxed animate-in fade-in duration-150">
-
                   <p>
-                    • {shippingText}
+                    •{' '}
+                    {
+                      shippingText
+                    }
                   </p>
 
                   <p>
-                    • {returnText}
+                    •{' '}
+                    {
+                      returnText
+                    }
                   </p>
-
                 </div>
               )}
             </div>
-
           </div>
-
         </div>
       </div>
 
@@ -1240,9 +2171,14 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
           REVIEWS
       ====================================================== */}
 
-      <section className="pt-8 border-t border-neutral-200">
+      <section
+        aria-label="Product reviews"
+        className="pt-8 border-t border-neutral-200"
+      >
         <ProductReviews
-          product={product}
+          product={
+            product
+          }
         />
       </section>
 
@@ -1250,28 +2186,35 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
           RELATED PRODUCTS
       ====================================================== */}
 
-      {relatedProducts.length > 0 && (
-        <section className="pt-8 border-t border-neutral-200">
-
+      {relatedProducts.length >
+        0 && (
+        <section
+          aria-labelledby="related-products-title"
+          className="pt-8 border-t border-neutral-200"
+        >
           <div className="flex items-center justify-between mb-6">
-
             <div>
               <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">
-                You May Also Like
+                You May Also
+                Like
               </span>
 
-              <h3 className="text-xl font-black text-neutral-900 tracking-tight">
-                Pair With These
+              <h2
+                id="related-products-title"
+                className="text-xl font-black text-neutral-900 tracking-tight"
+              >
+                Pair With
+                These
                 Silhouettes
-              </h3>
+              </h2>
             </div>
-
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
-
             {relatedProducts.map(
-              (relatedProduct) => (
+              (
+                relatedProduct
+              ) => (
                 <ProductCard
                   key={
                     relatedProduct.id
@@ -1285,7 +2228,6 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 />
               )
             )}
-
           </div>
         </section>
       )}
@@ -1299,10 +2241,11 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
           isSizeGuideOpen
         }
         onClose={() =>
-          setIsSizeGuideOpen(false)
+          setIsSizeGuideOpen(
+            false
+          )
         }
       />
-
-    </div>
+    </main>
   );
 };
