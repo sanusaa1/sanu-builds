@@ -1,6 +1,11 @@
 // ProductDetailPage.tsx
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+
 import {
   Heart,
   Star,
@@ -33,27 +38,46 @@ interface ProductDetailPageProps {
   onNavigate: (route: string) => void;
 }
 
-type AccordionKey = 'specs' | 'wash' | 'shipping' | '';
+type AccordionKey =
+  | 'specs'
+  | 'wash'
+  | 'shipping'
+  | '';
 
-export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
+export const ProductDetailPage: React.FC<
+  ProductDetailPageProps
+> = ({
   product,
   allProducts,
   onSelectProduct,
   onNavigate,
 }) => {
   const { addToCart } = useCart();
-  const { isInWishlist, toggleWishlist } = useWishlist();
-  const { success, error: toastError } = useToast();
+  const {
+    isInWishlist,
+    toggleWishlist,
+  } = useWishlist();
+
+  const {
+    success,
+    error: toastError,
+  } = useToast();
 
   /*
-   * ---------------------------------------------------------
-   * SEO HELPERS
-   * ---------------------------------------------------------
+   * =========================================================
+   * ADVANCED SEO HELPERS
+   * =========================================================
    */
 
   const getSiteUrl = () => {
-    if (typeof window !== 'undefined') {
-      return window.location.origin.replace(/\/$/, '');
+    if (
+      typeof window !== 'undefined' &&
+      window.location.origin
+    ) {
+      return window.location.origin.replace(
+        /\/$/,
+        ''
+      );
     }
 
     return 'https://sanubuilds.com';
@@ -61,317 +85,787 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
   const siteUrl = getSiteUrl();
 
+  const slugify = (
+    value: string
+  ) => {
+    return value
+      .toLowerCase()
+      .trim()
+      .replace(
+        /[^a-z0-9]+/g,
+        '-'
+      )
+      .replace(
+        /^-+|-+$/g,
+        '');
+  };
+
   const productSlug =
     product.slug ||
     product.id ||
-    product.name
-      ?.toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
+    slugify(
+      product.name ||
+        'product'
+    );
 
-  const productUrl = `${siteUrl}/product/${productSlug}`;
+  const productUrl =
+    `${siteUrl}/product/${productSlug}`;
 
-  const seoTitle = `${product.name} | ${
-    product.brand || 'Sanu Builds'
-  }`;
+  const seoTitle =
+    `${product.name} | ${
+      product.brand ||
+      'Sanu Builds'
+    }`;
 
   const seoDescription = (
     product.description ||
     `Buy ${product.name} online from ${
-      product.brand || 'Sanu Builds'
-    }. Shop premium quality apparel with secure checkout and fast delivery.`
+      product.brand ||
+      'Sanu Builds'
+    }. Shop premium quality apparel with secure checkout, fast delivery and easy returns.`
   )
-    .replace(/\s+/g, ' ')
+    .replace(
+      /\s+/g,
+      ' '
+    )
     .trim()
-    .slice(0, 160);
+    .slice(
+      0,
+      160
+    );
 
   const seoImage =
     product.images?.[0] ||
     `${siteUrl}/og-image.jpg`;
 
-  const seoPrice = Number(product.price || 0);
+  const seoImages =
+    Array.isArray(
+      product.images
+    ) &&
+    product.images.length >
+      0
+      ? product.images
+      : [seoImage];
 
-  const seoCompareAtPrice = Number(
-    product.compareAtPrice || 0
-  );
+  const seoPrice =
+    Number(
+      product.price || 0
+    );
+
+  const seoCompareAtPrice =
+    Number(
+      product.compareAtPrice ||
+        0
+    );
+
+  const seoStock =
+    Number(
+      product.stock || 0
+    );
 
   const seoAvailability =
-    Number(product.stock || 0) > 0
+    seoStock > 0
       ? 'https://schema.org/InStock'
       : 'https://schema.org/OutOfStock';
 
+  const seoCategory =
+    product.categoryName ||
+    'Apparel';
+
+  const seoBrand =
+    product.brand ||
+    'Sanu Builds';
+
+  const seoSku =
+    product.sku ||
+    product.id ||
+    productSlug;
+
+  const seoKeywords = useMemo(() => {
+    const values = [
+      product.name,
+      seoBrand,
+      seoCategory,
+      ...(Array.isArray(
+        product.tags
+      )
+        ? product.tags
+        : []),
+      'Sanu Builds',
+      'premium clothing',
+      'premium apparel',
+      'online clothing India',
+      'buy clothes online India',
+    ];
+
+    return Array.from(
+      new Set(
+        values
+          .filter(Boolean)
+          .map(
+            (value) =>
+              String(value)
+                .trim()
+                .toLowerCase()
+          )
+          .filter(Boolean)
+      )
+    ).join(', ');
+  }, [
+    product.name,
+    product.tags,
+    seoBrand,
+    seoCategory,
+  ]);
+
   /*
-   * ---------------------------------------------------------
+   * =========================================================
    * SEO META + STRUCTURED DATA
-   * ---------------------------------------------------------
+   * =========================================================
    */
 
   useEffect(() => {
-    if (typeof document === 'undefined') {
+    if (
+      typeof document ===
+      'undefined'
+    ) {
       return;
     }
 
-    document.title = seoTitle;
+    document.title =
+      seoTitle;
+
+    /*
+     * -------------------------------------------------------
+     * META HELPERS
+     * -------------------------------------------------------
+     */
 
     const ensureMeta = (
       selector: string,
-      attributes: Record<string, string>,
+      attributes: Record<
+        string,
+        string
+      >,
       content: string
     ) => {
-      let element = document.head.querySelector(
-        selector
-      ) as HTMLMetaElement | null;
+      let element =
+        document.head.querySelector(
+          selector
+        ) as HTMLMetaElement | null;
 
       if (!element) {
-        element = document.createElement('meta');
+        element =
+          document.createElement(
+            'meta'
+          );
 
-        Object.entries(attributes).forEach(
-          ([key, value]) => {
-            element!.setAttribute(key, value);
+        Object.entries(
+          attributes
+        ).forEach(
+          ([
+            key,
+            value,
+          ]) => {
+            element!.setAttribute(
+              key,
+              value
+            );
           }
         );
 
-        document.head.appendChild(element);
+        document.head.appendChild(
+          element
+        );
       }
 
-      element.setAttribute('content', content);
+      element.setAttribute(
+        'content',
+        content
+      );
 
       return element;
     };
 
     const ensureLink = (
       rel: string,
-      href: string
+      href: string,
+      attributes: Record<
+        string,
+        string
+      > = {}
     ) => {
-      let element = document.head.querySelector(
-        `link[rel="${rel}"]`
-      ) as HTMLLinkElement | null;
+      let element =
+        document.head.querySelector(
+          `link[rel="${rel}"]`
+        ) as HTMLLinkElement | null;
 
       if (!element) {
-        element = document.createElement('link');
-        element.setAttribute('rel', rel);
-        document.head.appendChild(element);
+        element =
+          document.createElement(
+            'link'
+          );
+
+        element.setAttribute(
+          'rel',
+          rel
+        );
+
+        document.head.appendChild(
+          element
+        );
       }
 
-      element.setAttribute('href', href);
+      element.setAttribute(
+        'href',
+        href
+      );
+
+      Object.entries(
+        attributes
+      ).forEach(
+        ([
+          key,
+          value,
+        ]) => {
+          element!.setAttribute(
+            key,
+            value
+          );
+        }
+      );
 
       return element;
     };
 
+    const ensureJsonLd = (
+      id: string,
+      data: unknown
+    ) => {
+      let script =
+        document.head.querySelector(
+          `script[data-seo="${id}"]`
+        ) as HTMLScriptElement | null;
+
+      if (!script) {
+        script =
+          document.createElement(
+            'script'
+          );
+
+        script.type =
+          'application/ld+json';
+
+        script.setAttribute(
+          'data-seo',
+          id
+        );
+
+        document.head.appendChild(
+          script
+        );
+      }
+
+      script.textContent =
+        JSON.stringify(
+          data
+        );
+
+      return script;
+    };
+
     /*
-     * Basic SEO
+     * -------------------------------------------------------
+     * BASIC SEO
+     * -------------------------------------------------------
      */
 
     ensureMeta(
       'meta[name="description"]',
-      { name: 'description' },
+      {
+        name: 'description',
+      },
       seoDescription
     );
 
     ensureMeta(
+      'meta[name="keywords"]',
+      {
+        name: 'keywords',
+      },
+      seoKeywords
+    );
+
+    ensureMeta(
       'meta[name="robots"]',
-      { name: 'robots' },
+      {
+        name: 'robots',
+      },
       'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1'
     );
 
     ensureMeta(
       'meta[name="googlebot"]',
-      { name: 'googlebot' },
+      {
+        name: 'googlebot',
+      },
+      'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1'
+    );
+
+    ensureMeta(
+      'meta[name="bingbot"]',
+      {
+        name: 'bingbot',
+      },
       'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1'
     );
 
     ensureMeta(
       'meta[name="theme-color"]',
-      { name: 'theme-color' },
+      {
+        name: 'theme-color',
+      },
       '#ffffff'
     );
 
+    ensureMeta(
+      'meta[name="author"]',
+      {
+        name: 'author',
+      },
+      'Sanu Builds'
+    );
+
+    ensureMeta(
+      'meta[name="publisher"]',
+      {
+        name: 'publisher',
+      },
+      'Sanu Builds'
+    );
+
+    ensureMeta(
+      'meta[name="rating"]',
+      {
+        name: 'rating',
+      },
+      'general'
+    );
+
+    ensureMeta(
+      'meta[name="referrer"]',
+      {
+        name: 'referrer',
+      },
+      'strict-origin-when-cross-origin'
+    );
+
     /*
-     * Canonical
+     * -------------------------------------------------------
+     * CANONICAL
+     * -------------------------------------------------------
      */
 
-    ensureLink('canonical', productUrl);
+    ensureLink(
+      'canonical',
+      productUrl
+    );
 
     /*
-     * Open Graph
+     * -------------------------------------------------------
+     * HREFLANG
+     * -------------------------------------------------------
+     */
+
+    ensureLink(
+      'alternate',
+      productUrl,
+      {
+        hreflang: 'en-IN',
+      }
+    );
+
+    ensureLink(
+      'alternate',
+      productUrl,
+      {
+        hreflang: 'x-default',
+      }
+    );
+
+    /*
+     * -------------------------------------------------------
+     * OPEN GRAPH
+     * -------------------------------------------------------
      */
 
     ensureMeta(
       'meta[property="og:type"]',
-      { property: 'og:type' },
+      {
+        property:
+          'og:type',
+      },
       'product'
     );
 
     ensureMeta(
       'meta[property="og:title"]',
-      { property: 'og:title' },
+      {
+        property:
+          'og:title',
+      },
       seoTitle
     );
 
     ensureMeta(
       'meta[property="og:description"]',
-      { property: 'og:description' },
+      {
+        property:
+          'og:description',
+      },
       seoDescription
     );
 
     ensureMeta(
       'meta[property="og:url"]',
-      { property: 'og:url' },
+      {
+        property:
+          'og:url',
+      },
       productUrl
     );
 
     ensureMeta(
       'meta[property="og:image"]',
-      { property: 'og:image' },
+      {
+        property:
+          'og:image',
+      },
       seoImage
     );
 
     ensureMeta(
       'meta[property="og:image:alt"]',
-      { property: 'og:image:alt' },
-      product.name
+      {
+        property:
+          'og:image:alt',
+      },
+      `${product.name} - Sanu Builds`
     );
 
     ensureMeta(
       'meta[property="og:site_name"]',
-      { property: 'og:site_name' },
+      {
+        property:
+          'og:site_name',
+      },
       'Sanu Builds'
     );
 
     ensureMeta(
       'meta[property="og:locale"]',
-      { property: 'og:locale' },
+      {
+        property:
+          'og:locale',
+      },
       'en_IN'
     );
 
+    ensureMeta(
+      'meta[property="og:updated_time"]',
+      {
+        property:
+          'og:updated_time',
+      },
+      new Date().toISOString()
+    );
+
     /*
-     * Twitter
+     * -------------------------------------------------------
+     * MULTIPLE OG IMAGES
+     * -------------------------------------------------------
      */
 
-    ensureMeta(
-      'meta[name="twitter:card"]',
-      { name: 'twitter:card' },
-      'summary_large_image'
-    );
-
-    ensureMeta(
-      'meta[name="twitter:title"]',
-      { name: 'twitter:title' },
-      seoTitle
-    );
-
-    ensureMeta(
-      'meta[name="twitter:description"]',
-      { name: 'twitter:description' },
-      seoDescription
-    );
-
-    ensureMeta(
-      'meta[name="twitter:image"]',
-      { name: 'twitter:image' },
-      seoImage
-    );
+    seoImages
+      .slice(0, 4)
+      .forEach(
+        (
+          image,
+          index
+        ) => {
+          ensureMeta(
+            `meta[property="og:image"][data-seo-index="${index}"]`,
+            {
+              property:
+                'og:image',
+              'data-seo-index':
+                String(
+                  index
+                ),
+            },
+            image
+          );
+        }
+      );
 
     /*
-     * Product-specific meta
+     * -------------------------------------------------------
+     * PRODUCT OG META
+     * -------------------------------------------------------
      */
 
     ensureMeta(
       'meta[property="product:price:amount"]',
-      { property: 'product:price:amount' },
+      {
+        property:
+          'product:price:amount',
+      },
       seoPrice.toFixed(2)
     );
 
     ensureMeta(
       'meta[property="product:price:currency"]',
-      { property: 'product:price:currency' },
+      {
+        property:
+          'product:price:currency',
+      },
       'INR'
     );
 
     ensureMeta(
       'meta[property="product:availability"]',
-      { property: 'product:availability' },
-      Number(product.stock || 0) > 0
+      {
+        property:
+          'product:availability',
+      },
+      seoStock > 0
         ? 'in stock'
         : 'out of stock'
     );
 
-    if (product.brand) {
-      ensureMeta(
-        'meta[property="product:brand"]',
-        { property: 'product:brand' },
-        product.brand
-      );
-    }
+    ensureMeta(
+      'meta[property="product:condition"]',
+      {
+        property:
+          'product:condition',
+      },
+      'new'
+    );
 
-    if (product.sku) {
-      ensureMeta(
-        'meta[property="product:retailer_item_id"]',
-        { property: 'product:retailer_item_id' },
-        product.sku
-      );
-    }
+    ensureMeta(
+      'meta[property="product:category"]',
+      {
+        property:
+          'product:category',
+      },
+      seoCategory
+    );
+
+    ensureMeta(
+      'meta[property="product:brand"]',
+      {
+        property:
+          'product:brand',
+      },
+      seoBrand
+    );
+
+    ensureMeta(
+      'meta[property="product:retailer_item_id"]',
+      {
+        property:
+          'product:retailer_item_id',
+      },
+      seoSku
+    );
 
     /*
      * -------------------------------------------------------
-     * PRODUCT JSON-LD
+     * TWITTER / X
      * -------------------------------------------------------
      */
 
-    const productSchema: Record<string, unknown> = {
-      '@context': 'https://schema.org',
-      '@type': 'Product',
-      '@id': `${productUrl}#product`,
-      name: product.name,
-      url: productUrl,
-      description: seoDescription,
-      image:
-        Array.isArray(product.images) &&
-        product.images.length > 0
-          ? product.images
-          : [seoImage],
-      sku: product.sku || product.id,
-      category:
-        product.categoryName ||
-        'Apparel',
-      brand: {
-        '@type': 'Brand',
+    ensureMeta(
+      'meta[name="twitter:card"]',
+      {
         name:
-          product.brand ||
-          'Sanu Builds',
+          'twitter:card',
       },
-      offers: {
-        '@type': 'Offer',
-        url: productUrl,
-        priceCurrency: 'INR',
-        price: seoPrice.toFixed(2),
-        availability:
-          seoAvailability,
-        itemCondition:
-          'https://schema.org/NewCondition',
-        seller: {
-          '@type': 'Organization',
-          name: 'Sanu Builds',
-          url: siteUrl,
-        },
+      'summary_large_image'
+    );
+
+    ensureMeta(
+      'meta[name="twitter:title"]',
+      {
+        name:
+          'twitter:title',
+      },
+      seoTitle
+    );
+
+    ensureMeta(
+      'meta[name="twitter:description"]',
+      {
+        name:
+          'twitter:description',
+      },
+      seoDescription
+    );
+
+    ensureMeta(
+      'meta[name="twitter:image"]',
+      {
+        name:
+          'twitter:image',
+      },
+      seoImage
+    );
+
+    ensureMeta(
+      'meta[name="twitter:image:alt"]',
+      {
+        name:
+          'twitter:image:alt',
+      },
+      `${product.name} - Sanu Builds`
+    );
+
+    ensureMeta(
+      'meta[name="twitter:label1"]',
+      {
+        name:
+          'twitter:label1',
+      },
+      'Price'
+    );
+
+    ensureMeta(
+      'meta[name="twitter:data1"]',
+      {
+        name:
+          'twitter:data1',
+      },
+      `₹${seoPrice.toLocaleString(
+        'en-IN'
+      )}`
+    );
+
+    ensureMeta(
+      'meta[name="twitter:label2"]',
+      {
+        name:
+          'twitter:label2',
+      },
+      'Availability'
+    );
+
+    ensureMeta(
+      'meta[name="twitter:data2"]',
+      {
+        name:
+          'twitter:data2',
+      },
+      seoStock > 0
+        ? 'In Stock'
+        : 'Out of Stock'
+    );
+
+    /*
+     * -------------------------------------------------------
+     * RATING DATA
+     * -------------------------------------------------------
+     */
+
+    const schemaRating =
+      Math.min(
+        5,
+        Math.max(
+          0,
+          Number(
+            product.rating ??
+              0
+          )
+        )
+      );
+
+    const schemaReviewCount =
+      Math.max(
+        0,
+        Number(
+          product.reviewCount ??
+            0
+        )
+      );
+
+    /*
+     * -------------------------------------------------------
+     * PRODUCT DETAILS
+     * -------------------------------------------------------
+     */
+
+    const details =
+      product.details ||
+      {};
+
+    const productColor =
+      details.color ||
+      (Array.isArray(
+        product.colors
+      ) &&
+      product.colors.length >
+        0
+        ? product.colors
+            .map(
+              (color) =>
+                color.name
+            )
+            .filter(Boolean)
+            .join(', ')
+        : undefined);
+
+    const productMaterial =
+      details.material ||
+      details.fabric;
+
+    /*
+     * -------------------------------------------------------
+     * PRODUCT SCHEMA
+     * -------------------------------------------------------
+     */
+
+    const offerSchema: Record<
+      string,
+      unknown
+    > = {
+      '@type': 'Offer',
+      '@id': `${productUrl}#offer`,
+      url: productUrl,
+      priceCurrency: 'INR',
+      price:
+        seoPrice.toFixed(2),
+      availability:
+        seoAvailability,
+      itemCondition:
+        'https://schema.org/NewCondition',
+      seller: {
+        '@type':
+          'Organization',
+        '@id': `${siteUrl}#organization`,
+        name: 'Sanu Builds',
+        url: siteUrl,
       },
     };
 
     /*
-     * Compare-at price / sale price
+     * Sale price validity
      */
 
     if (
-      seoCompareAtPrice > seoPrice &&
+      seoCompareAtPrice >
+        seoPrice &&
       seoCompareAtPrice > 0
     ) {
-      (
-        productSchema.offers as Record<
-          string,
-          unknown
-        >
-      ).priceValidUntil =
+      offerSchema.priceValidUntil =
         new Date(
           Date.now() +
             1000 *
@@ -385,236 +879,295 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     }
 
     /*
-     * Rating schema
+     * Shipping details
+     *
+     * Uses the available product shipping
+     * text without inventing a shipping price.
      */
 
-    const schemaRating = Math.min(
-      5,
-      Math.max(
-        0,
-        Number(product.rating ?? 0)
-      )
-    );
+    if (
+      details.shipping ||
+      details.shippingInfo
+    ) {
+      offerSchema.shippingDetails =
+        {
+          '@type':
+            'OfferShippingDetails',
+          description:
+            details.shipping ||
+            details.shippingInfo,
+        };
+    }
 
-    const schemaReviewCount = Math.max(
-      0,
-      Number(
-        product.reviewCount ?? 0
-      )
-    );
+    /*
+     * Product return information
+     */
+
+    if (
+      details.returnPolicy ||
+      details.returns
+    ) {
+      offerSchema.hasMerchantReturnPolicy =
+        {
+          '@type':
+            'MerchantReturnPolicy',
+          description:
+            details.returnPolicy ||
+            details.returns,
+        };
+    }
+
+    const productSchema: Record<
+      string,
+      unknown
+    > = {
+      '@context':
+        'https://schema.org',
+      '@type': 'Product',
+      '@id': `${productUrl}#product`,
+      name: product.name,
+      url: productUrl,
+      description:
+        seoDescription,
+      image: seoImages,
+      sku: seoSku,
+      mpn:
+        product.sku ||
+        undefined,
+      category:
+        seoCategory,
+      brand: {
+        '@type':
+          'Brand',
+        name: seoBrand,
+      },
+      offers:
+        offerSchema,
+    };
+
+    if (productColor) {
+      productSchema.color =
+        productColor;
+    }
+
+    if (productMaterial) {
+      productSchema.material =
+        productMaterial;
+    }
+
+    if (
+      Array.isArray(
+        product.sizes
+      ) &&
+      product.sizes.length >
+        0
+    ) {
+      productSchema.size =
+        product.sizes.join(
+          ', '
+        );
+    }
+
+    if (
+      product.description
+    ) {
+      productSchema.disambiguatingDescription =
+        product.description;
+    }
 
     if (
       schemaRating > 0 &&
       schemaReviewCount > 0
     ) {
-      productSchema.aggregateRating = {
+      productSchema.aggregateRating =
+        {
+          '@type':
+            'AggregateRating',
+          ratingValue:
+            schemaRating.toFixed(
+              1
+            ),
+          bestRating:
+            '5',
+          worstRating:
+            '1',
+          reviewCount:
+            schemaReviewCount,
+        };
+    }
+
+    /*
+     * -------------------------------------------------------
+     * BREADCRUMB SCHEMA
+     * -------------------------------------------------------
+     */
+
+    const breadcrumbSchema =
+      {
+        '@context':
+          'https://schema.org',
         '@type':
-          'AggregateRating',
-        ratingValue:
-          schemaRating.toFixed(1),
-        bestRating: '5',
-        worstRating: '1',
-        reviewCount:
-          schemaReviewCount,
+          'BreadcrumbList',
+        '@id': `${productUrl}#breadcrumb`,
+        itemListElement: [
+          {
+            '@type':
+              'ListItem',
+            position: 1,
+            name: 'Home',
+            item: siteUrl,
+          },
+          {
+            '@type':
+              'ListItem',
+            position: 2,
+            name:
+              seoCategory,
+            item: `${siteUrl}/shop`,
+          },
+          {
+            '@type':
+              'ListItem',
+            position: 3,
+            name:
+              product.name,
+            item: productUrl,
+          },
+        ],
       };
-    }
-
-    /*
-     * Additional product information
-     */
-
-    const details = product.details || {};
-
-    if (details.color) {
-      productSchema.color =
-        details.color;
-    }
-
-    if (details.material) {
-      productSchema.material =
-        details.material;
-    } else if (details.fabric) {
-      productSchema.material =
-        details.fabric;
-    }
-
-    if (
-      Array.isArray(product.sizes) &&
-      product.sizes.length > 0
-    ) {
-      productSchema.size =
-        product.sizes.join(', ');
-    }
-
-    /*
-     * Insert JSON-LD
-     */
-
-    let productScript =
-      document.head.querySelector(
-        'script[data-seo="product-jsonld"]'
-      ) as HTMLScriptElement | null;
-
-    if (!productScript) {
-      productScript =
-        document.createElement(
-          'script'
-        );
-
-      productScript.type =
-        'application/ld+json';
-
-      productScript.setAttribute(
-        'data-seo',
-        'product-jsonld'
-      );
-
-      document.head.appendChild(
-        productScript
-      );
-    }
-
-    productScript.textContent =
-      JSON.stringify(
-        productSchema
-      );
 
     /*
      * -------------------------------------------------------
-     * BREADCRUMB JSON-LD
+     * ORGANIZATION SCHEMA
      * -------------------------------------------------------
      */
 
-    const breadcrumbSchema = {
-      '@context':
-        'https://schema.org',
-      '@type':
-        'BreadcrumbList',
-      itemListElement: [
-        {
+    const organizationSchema =
+      {
+        '@context':
+          'https://schema.org',
+        '@type':
+          'Organization',
+        '@id': `${siteUrl}#organization`,
+        name: 'Sanu Builds',
+        url: siteUrl,
+        logo: {
           '@type':
-            'ListItem',
-          position: 1,
-          name: 'Home',
-          item: siteUrl,
+            'ImageObject',
+          url: `${siteUrl}/logo.png`,
         },
-        {
-          '@type':
-            'ListItem',
-          position: 2,
-          name:
-            product.categoryName ||
-            'Shop',
-          item: `${siteUrl}/shop`,
-        },
-        {
-          '@type':
-            'ListItem',
-          position: 3,
-          name: product.name,
-          item: productUrl,
-        },
-      ],
-    };
-
-    let breadcrumbScript =
-      document.head.querySelector(
-        'script[data-seo="breadcrumb-jsonld"]'
-      ) as HTMLScriptElement | null;
-
-    if (!breadcrumbScript) {
-      breadcrumbScript =
-        document.createElement(
-          'script'
-        );
-
-      breadcrumbScript.type =
-        'application/ld+json';
-
-      breadcrumbScript.setAttribute(
-        'data-seo',
-        'breadcrumb-jsonld'
-      );
-
-      document.head.appendChild(
-        breadcrumbScript
-      );
-    }
-
-    breadcrumbScript.textContent =
-      JSON.stringify(
-        breadcrumbSchema
-      );
+      };
 
     /*
      * -------------------------------------------------------
-     * ORGANIZATION JSON-LD
+     * WEBSITE SCHEMA
      * -------------------------------------------------------
      */
 
-    const organizationSchema = {
-      '@context':
-        'https://schema.org',
-      '@type':
-        'Organization',
-      name: 'Sanu Builds',
-      url: siteUrl,
-      logo:
-        `${siteUrl}/logo.png`,
-    };
-
-    let organizationScript =
-      document.head.querySelector(
-        'script[data-seo="organization-jsonld"]'
-      ) as HTMLScriptElement | null;
-
-    if (!organizationScript) {
-      organizationScript =
-        document.createElement(
-          'script'
-        );
-
-      organizationScript.type =
-        'application/ld+json';
-
-      organizationScript.setAttribute(
-        'data-seo',
-        'organization-jsonld'
-      );
-
-      document.head.appendChild(
-        organizationScript
-      );
-    }
-
-    organizationScript.textContent =
-      JSON.stringify(
-        organizationSchema
-      );
+    const websiteSchema =
+      {
+        '@context':
+          'https://schema.org',
+        '@type':
+          'WebSite',
+        '@id': `${siteUrl}#website`,
+        url: siteUrl,
+        name: 'Sanu Builds',
+        publisher: {
+          '@id': `${siteUrl}#organization`,
+        },
+        inLanguage:
+          'en-IN',
+      };
 
     /*
-     * Cleanup only structured data
-     * created by this page.
+     * -------------------------------------------------------
+     * WEBPAGE SCHEMA
+     * -------------------------------------------------------
+     */
+
+    const webpageSchema =
+      {
+        '@context':
+          'https://schema.org',
+        '@type':
+          'WebPage',
+        '@id': `${productUrl}#webpage`,
+        url: productUrl,
+        name: seoTitle,
+        description:
+          seoDescription,
+        isPartOf: {
+          '@id': `${siteUrl}#website`,
+        },
+        about: {
+          '@id': `${productUrl}#product`,
+        },
+        primaryImageOfPage: {
+          '@type':
+            'ImageObject',
+          url: seoImage,
+        },
+        breadcrumb: {
+          '@id': `${productUrl}#breadcrumb`,
+        },
+        inLanguage:
+          'en-IN',
+      };
+
+    /*
+     * -------------------------------------------------------
+     * JSON-LD INSERTION
+     * -------------------------------------------------------
+     */
+
+    ensureJsonLd(
+      'product-jsonld',
+      productSchema
+    );
+
+    ensureJsonLd(
+      'breadcrumb-jsonld',
+      breadcrumbSchema
+    );
+
+    ensureJsonLd(
+      'organization-jsonld',
+      organizationSchema
+    );
+
+    ensureJsonLd(
+      'website-jsonld',
+      websiteSchema
+    );
+
+    ensureJsonLd(
+      'webpage-jsonld',
+      webpageSchema
+    );
+
+    /*
+     * -------------------------------------------------------
+     * CLEANUP
+     * -------------------------------------------------------
      */
 
     return () => {
-      document.head
-        .querySelector(
-          'script[data-seo="product-jsonld"]'
-        )
-        ?.remove();
-
-      document.head
-        .querySelector(
-          'script[data-seo="breadcrumb-jsonld"]'
-        )
-        ?.remove();
-
-      document.head
-        .querySelector(
-          'script[data-seo="organization-jsonld"]'
-        )
-        ?.remove();
+      [
+        'product-jsonld',
+        'breadcrumb-jsonld',
+        'organization-jsonld',
+        'website-jsonld',
+        'webpage-jsonld',
+      ].forEach(
+        (seoId) => {
+          document.head
+            .querySelector(
+              `script[data-seo="${seoId}"]`
+            )
+            ?.remove();
+        }
+      );
     };
   }, [
     product,
@@ -622,63 +1175,84 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     seoTitle,
     seoDescription,
     seoImage,
+    seoImages,
     seoPrice,
     seoCompareAtPrice,
     seoAvailability,
+    seoKeywords,
+    seoBrand,
+    seoCategory,
+    seoSku,
+    seoStock,
     siteUrl,
   ]);
 
   /*
-   * ---------------------------------------------------------
+   * =========================================================
    * INDIAN CURRENCY FORMAT
-   * ---------------------------------------------------------
+   * =========================================================
    */
 
-  const formatPrice = (value: number) => {
+  const formatPrice = (
+    value: number
+  ) => {
     return new Intl.NumberFormat(
       'en-IN',
       {
-        style: 'currency',
-        currency: 'INR',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
+        style:
+          'currency',
+        currency:
+          'INR',
+        minimumFractionDigits:
+          2,
+        maximumFractionDigits:
+          2,
       }
     ).format(value);
   };
 
   /*
-   * ---------------------------------------------------------
+   * =========================================================
    * SAFE PRODUCT DATA
-   * ---------------------------------------------------------
+   * =========================================================
    */
 
-  const sizes = Array.isArray(
-    product.sizes
-  )
-    ? product.sizes.filter(Boolean)
-    : [];
+  const sizes =
+    Array.isArray(
+      product.sizes
+    )
+      ? product.sizes.filter(
+          Boolean
+        )
+      : [];
 
-  const colors = Array.isArray(
-    product.colors
-  )
-    ? product.colors.filter(
-        (color) => color?.name
-      )
-    : [];
+  const colors =
+    Array.isArray(
+      product.colors
+    )
+      ? product.colors.filter(
+          (color) =>
+            color?.name
+        )
+      : [];
 
-  const variants = Array.isArray(
-    product.variants
-  )
-    ? product.variants
-    : [];
+  const variants =
+    Array.isArray(
+      product.variants
+    )
+      ? product.variants
+      : [];
 
   /*
-   * ---------------------------------------------------------
+   * =========================================================
    * LOCAL STATE
-   * ---------------------------------------------------------
+   * =========================================================
    */
 
-  const [selectedSize, setSelectedSize] =
+  const [
+    selectedSize,
+    setSelectedSize,
+  ] =
     useState<string>(
       sizes[0] || ''
     );
@@ -686,17 +1260,25 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   const [
     selectedColor,
     setSelectedColor,
-  ] = useState<string>(
-    colors[0]?.name || ''
-  );
+  ] =
+    useState<string>(
+      colors[0]?.name ||
+        ''
+    );
 
-  const [quantity, setQuantity] =
+  const [
+    quantity,
+    setQuantity,
+  ] =
     useState<number>(1);
 
   const [
     isSizeGuideOpen,
     setIsSizeGuideOpen,
-  ] = useState<boolean>(false);
+  ] =
+    useState<boolean>(
+      false
+    );
 
   const [
     openAccordion,
@@ -707,9 +1289,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     );
 
   /*
-   * ---------------------------------------------------------
+   * =========================================================
    * PRODUCT CHANGE HANDLING
-   * ---------------------------------------------------------
+   * =========================================================
    */
 
   useEffect(() => {
@@ -722,14 +1304,17 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
         selectedSize
       );
 
-    if (!sizeStillValid) {
+    if (
+      !sizeStillValid
+    ) {
       setSelectedSize(
         firstSize
       );
     }
 
     const firstColor =
-      colors[0]?.name || '';
+      colors[0]?.name ||
+      '';
 
     const colorStillValid =
       selectedColor &&
@@ -739,7 +1324,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
           selectedColor
       );
 
-    if (!colorStillValid) {
+    if (
+      !colorStillValid
+    ) {
       setSelectedColor(
         firstColor
       );
@@ -749,9 +1336,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   }, [product.id]);
 
   /*
-   * ---------------------------------------------------------
+   * =========================================================
    * WISHLIST
-   * ---------------------------------------------------------
+   * =========================================================
    */
 
   const isSaved =
@@ -760,9 +1347,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     );
 
   /*
-   * ---------------------------------------------------------
+   * =========================================================
    * CURRENT VARIANT
-   * ---------------------------------------------------------
+   * =========================================================
    */
 
   const currentVariant =
@@ -790,39 +1377,45 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     ]);
 
   /*
-   * ---------------------------------------------------------
+   * =========================================================
    * STOCK LOGIC
-   * ---------------------------------------------------------
+   * =========================================================
    */
 
-  const maxStock = useMemo(() => {
-    if (currentVariant) {
+  const maxStock =
+    useMemo(() => {
+      if (
+        currentVariant
+      ) {
+        return Math.max(
+          0,
+          Number(
+            currentVariant.stock ||
+              0
+          )
+        );
+      }
+
       return Math.max(
         0,
         Number(
-          currentVariant.stock ||
+          product.stock ||
             0
         )
       );
-    }
-
-    return Math.max(
-      0,
-      Number(
-        product.stock || 0
-      )
-    );
-  }, [
-    currentVariant,
-    product.stock,
-  ]);
+    }, [
+      currentVariant,
+      product.stock,
+    ]);
 
   const isOutOfStock =
     maxStock <= 0;
 
   useEffect(() => {
     setQuantity(
-      (currentQuantity) => {
+      (
+        currentQuantity
+      ) => {
         if (
           maxStock <= 0
         ) {
@@ -841,14 +1434,15 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   }, [maxStock]);
 
   /*
-   * ---------------------------------------------------------
+   * =========================================================
    * PRICE / DISCOUNT
-   * ---------------------------------------------------------
+   * =========================================================
    */
 
-  const price = Number(
-    product.price || 0
-  );
+  const price =
+    Number(
+      product.price || 0
+    );
 
   const compareAtPrice =
     Number(
@@ -876,20 +1470,22 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     calculatedDiscountPercentage;
 
   /*
-   * ---------------------------------------------------------
+   * =========================================================
    * RATING
-   * ---------------------------------------------------------
+   * =========================================================
    */
 
-  const rating = Math.min(
-    5,
-    Math.max(
-      0,
-      Number(
-        product.rating ?? 0
+  const rating =
+    Math.min(
+      5,
+      Math.max(
+        0,
+        Number(
+          product.rating ??
+            0
+        )
       )
-    )
-  );
+    );
 
   const reviewCount =
     Math.max(
@@ -901,13 +1497,14 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     );
 
   /*
-   * ---------------------------------------------------------
-   * PRODUCT DETAILS FROM FIREBASE
-   * ---------------------------------------------------------
+   * =========================================================
+   * PRODUCT DETAILS
+   * =========================================================
    */
 
   const details =
-    product.details || {};
+    product.details ||
+    {};
 
   const fabric =
     details.fabric ||
@@ -938,9 +1535,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     'Wash-care information not provided';
 
   /*
-   * ---------------------------------------------------------
+   * =========================================================
    * SHIPPING / RETURNS
-   * ---------------------------------------------------------
+   * =========================================================
    */
 
   const shippingText =
@@ -963,9 +1560,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
       : 'Weight not specified';
 
   /*
-   * ---------------------------------------------------------
+   * =========================================================
    * RELATED PRODUCTS
-   * ---------------------------------------------------------
+   * =========================================================
    */
 
   const relatedProducts =
@@ -1061,10 +1658,14 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
             b.score -
             a.score
         )
-        .slice(0, 4)
+        .slice(
+          0,
+          4
+        )
         .map(
-          ({ item }) =>
-            item
+          ({
+            item,
+          }) => item
         );
     }, [
       allProducts,
@@ -1072,82 +1673,84 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
       product.categoryId,
       product.brand,
       product.tags,
-      product.featured,
-      product.bestseller,
     ]);
 
   /*
-   * ---------------------------------------------------------
+   * =========================================================
    * HANDLERS
-   * ---------------------------------------------------------
+   * =========================================================
    */
 
-  const handleColorChange = (
-    color: string
-  ) => {
-    setSelectedColor(
-      color
-    );
+  const handleColorChange =
+    (
+      color: string
+    ) => {
+      setSelectedColor(
+        color
+      );
 
-    const matchingSizes =
-      sizes.filter(
-        (size) => {
-          const variant =
-            variants.find(
-              (item) =>
-                item.size ===
-                  size &&
-                item.color ===
-                  color
+      const matchingSizes =
+        sizes.filter(
+          (size) => {
+            const variant =
+              variants.find(
+                (item) =>
+                  item.size ===
+                    size &&
+                  item.color ===
+                    color
+              );
+
+            return (
+              !variant ||
+              Number(
+                variant.stock ||
+                  0
+              ) > 0
             );
+          }
+        );
 
-          return (
-            !variant ||
-            Number(
-              variant.stock ||
-                0
-            ) > 0
-          );
-        }
-      );
+      if (
+        selectedSize &&
+        matchingSizes.includes(
+          selectedSize
+        )
+      ) {
+        return;
+      }
 
-    if (
-      selectedSize &&
-      matchingSizes.includes(
-        selectedSize
-      )
-    ) {
-      return;
-    }
+      if (
+        matchingSizes.length >
+        0
+      ) {
+        setSelectedSize(
+          matchingSizes[0]
+        );
+      } else if (
+        sizes.length > 0
+      ) {
+        setSelectedSize(
+          sizes[0]
+        );
+      }
+    };
 
-    if (
-      matchingSizes.length >
-      0
-    ) {
+  const handleSizeChange =
+    (
+      size: string
+    ) => {
       setSelectedSize(
-        matchingSizes[0]
+        size
       );
-    } else if (
-      sizes.length > 0
-    ) {
-      setSelectedSize(
-        sizes[0]
-      );
-    }
-  };
-
-  const handleSizeChange = (
-    size: string
-  ) => {
-    setSelectedSize(
-      size
-    );
-  };
+    };
 
   const handleQuantityDecrease =
     () => {
       setQuantity(
-        (currentQuantity) =>
+        (
+          currentQuantity
+        ) =>
           Math.max(
             1,
             currentQuantity -
@@ -1165,7 +1768,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
       }
 
       setQuantity(
-        (currentQuantity) =>
+        (
+          currentQuantity
+        ) =>
           Math.min(
             maxStock,
             currentQuantity +
@@ -1174,101 +1779,103 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
       );
     };
 
-  const handleAddToCart = () => {
-    if (
-      isOutOfStock
-    ) {
-      toastError(
-        `Selected ${
-          selectedSize ||
-          'size'
-        } / ${
-          selectedColor ||
-          'color'
-        } is currently out of stock.`
-      );
+  const handleAddToCart =
+    () => {
+      if (
+        isOutOfStock
+      ) {
+        toastError(
+          `Selected ${
+            selectedSize ||
+            'size'
+          } / ${
+            selectedColor ||
+            'color'
+          } is currently out of stock.`
+        );
 
-      return;
-    }
+        return;
+      }
 
-    if (
-      quantity >
-      maxStock
-    ) {
-      toastError(
-        `Only ${maxStock} item${
-          maxStock === 1
-            ? ''
-            : 's'
-        } available.`
-      );
-
-      setQuantity(
+      if (
+        quantity >
         maxStock
+      ) {
+        toastError(
+          `Only ${maxStock} item${
+            maxStock === 1
+              ? ''
+              : 's'
+          } available.`
+        );
+
+        setQuantity(
+          maxStock
+        );
+
+        return;
+      }
+
+      addToCart(
+        product,
+        selectedSize,
+        selectedColor,
+        quantity
       );
 
-      return;
-    }
-
-    addToCart(
-      product,
-      selectedSize,
-      selectedColor,
-      quantity
-    );
-
-    success(
-      'Product added to your bag.'
-    );
-  };
-
-  const handleBuyNow = () => {
-    if (
-      isOutOfStock
-    ) {
-      toastError(
-        `Selected ${
-          selectedSize ||
-          'size'
-        } / ${
-          selectedColor ||
-          'color'
-        } is currently out of stock.`
+      success(
+        'Product added to your bag.'
       );
+    };
 
-      return;
-    }
+  const handleBuyNow =
+    () => {
+      if (
+        isOutOfStock
+      ) {
+        toastError(
+          `Selected ${
+            selectedSize ||
+            'size'
+          } / ${
+            selectedColor ||
+            'color'
+          } is currently out of stock.`
+        );
 
-    if (
-      quantity >
-      maxStock
-    ) {
-      toastError(
-        `Only ${maxStock} item${
-          maxStock === 1
-            ? ''
-            : 's'
-        } available.`
-      );
+        return;
+      }
 
-      setQuantity(
+      if (
+        quantity >
         maxStock
+      ) {
+        toastError(
+          `Only ${maxStock} item${
+            maxStock === 1
+              ? ''
+              : 's'
+          } available.`
+        );
+
+        setQuantity(
+          maxStock
+        );
+
+        return;
+      }
+
+      addToCart(
+        product,
+        selectedSize,
+        selectedColor,
+        quantity
       );
 
-      return;
-    }
-
-    addToCart(
-      product,
-      selectedSize,
-      selectedColor,
-      quantity
-    );
-
-    onNavigate(
-      '/checkout'
-    );
-  };
+      onNavigate(
+        '/checkout'
+      );
+    };
 
   const handleWishlist =
     () => {
@@ -1278,88 +1885,97 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     };
 
   /*
-   * ---------------------------------------------------------
+   * =========================================================
    * ACCORDION
-   * ---------------------------------------------------------
+   * =========================================================
    */
 
-  const toggleAccordion = (
-    key: AccordionKey
-  ) => {
-    setOpenAccordion(
-      (current) =>
-        current === key
-          ? ''
-          : key
-    );
-  };
+  const toggleAccordion =
+    (
+      key: AccordionKey
+    ) => {
+      setOpenAccordion(
+        (current) =>
+          current === key
+            ? ''
+            : key
+      );
+    };
 
   /*
-   * ---------------------------------------------------------
+   * =========================================================
    * SIZE AVAILABILITY
-   * ---------------------------------------------------------
+   * =========================================================
    */
 
-  const getSizeVariant = (
-    size: string
-  ) => {
-    if (
-      !selectedColor
-    ) {
-      return null;
-    }
+  const getSizeVariant =
+    (
+      size: string
+    ) => {
+      if (
+        !selectedColor
+      ) {
+        return null;
+      }
 
-    return (
-      variants.find(
-        (variant) =>
-          variant.size ===
-            size &&
-          variant.color ===
-            selectedColor
-      ) || null
-    );
-  };
-
-  const isSizeOutOfStock = (
-    size: string
-  ) => {
-    const variant =
-      getSizeVariant(
-        size
-      );
-
-    if (
-      variants.length >
-      0
-    ) {
       return (
-        !variant ||
+        variants.find(
+          (variant) =>
+            variant.size ===
+              size &&
+            variant.color ===
+              selectedColor
+        ) || null
+      );
+    };
+
+  const isSizeOutOfStock =
+    (
+      size: string
+    ) => {
+      const variant =
+        getSizeVariant(
+          size
+        );
+
+      if (
+        variants.length >
+        0
+      ) {
+        return (
+          !variant ||
+          Number(
+            variant.stock ||
+              0
+          ) <= 0
+        );
+      }
+
+      return (
         Number(
-          variant.stock ||
-            0
+          product.stock || 0
         ) <= 0
       );
-    }
-
-    return (
-      Number(
-        product.stock || 0
-      ) <= 0
-    );
-  };
+    };
 
   /*
-   * ---------------------------------------------------------
+   * =========================================================
    * STAR RENDERING
-   * ---------------------------------------------------------
+   * =========================================================
    */
 
   const renderRatingStars =
     () => {
       return [
-        1, 2, 3, 4, 5,
+        1,
+        2,
+        3,
+        4,
+        5,
       ].map(
-        (starNumber) => {
+        (
+          starNumber
+        ) => {
           const filled =
             rating >=
             starNumber;
@@ -1389,9 +2005,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     };
 
   /*
-   * ---------------------------------------------------------
+   * =========================================================
    * RENDER
-   * ---------------------------------------------------------
+   * =========================================================
    */
 
   return (
@@ -1400,6 +2016,10 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
       itemType="https://schema.org/Product"
       className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-16"
     >
+      {/* =====================================================
+          MICRODATA SEO
+      ====================================================== */}
+
       <meta
         itemProp="name"
         content={
@@ -1421,20 +2041,32 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
         }
       />
 
+      <meta
+        itemProp="category"
+        content={
+          seoCategory
+        }
+      />
+
+      <meta
+        itemProp="brand"
+        content={
+          seoBrand
+        }
+      />
+
+      <meta
+        itemProp="sku"
+        content={
+          seoSku
+        }
+      />
+
       {seoImage && (
         <meta
           itemProp="image"
           content={
             seoImage
-          }
-        />
-      )}
-
-      {product.sku && (
-        <meta
-          itemProp="sku"
-          content={
-            product.sku
           }
         />
       )}
@@ -1529,7 +2161,51 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
             {/* RATING */}
 
-            <div className="flex items-center gap-2 mt-2">
+            <div
+              className="flex items-center gap-2 mt-2"
+              itemProp={
+                reviewCount > 0
+                  ? 'aggregateRating'
+                  : undefined
+              }
+              itemScope={
+                reviewCount > 0
+              }
+              itemType={
+                reviewCount > 0
+                  ? 'https://schema.org/AggregateRating'
+                  : undefined
+              }
+            >
+              {reviewCount >
+                0 && (
+                <>
+                  <meta
+                    itemProp="ratingValue"
+                    content={rating.toFixed(
+                      1
+                    )}
+                  />
+
+                  <meta
+                    itemProp="bestRating"
+                    content="5"
+                  />
+
+                  <meta
+                    itemProp="worstRating"
+                    content="1"
+                  />
+
+                  <meta
+                    itemProp="reviewCount"
+                    content={String(
+                      reviewCount
+                    )}
+                  />
+                </>
+              )}
+
               <div
                 className="flex items-center"
                 aria-label={`${rating} out of 5 stars`}
@@ -1547,7 +2223,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
               <span className="text-xs text-neutral-400">
                 (
-                {reviewCount}{' '}
+                {
+                  reviewCount
+                }{' '}
                 {reviewCount ===
                 1
                   ? 'review'
@@ -1557,7 +2235,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
             </div>
           </div>
 
-          {/* PRICE */}
+          {/* PRICE / OFFER */}
 
           <div
             itemProp="offers"
@@ -1578,10 +2256,20 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
             />
 
             <meta
+              itemProp="itemCondition"
+              content="https://schema.org/NewCondition"
+            />
+
+            <meta
               itemProp="url"
               content={
                 productUrl
               }
+            />
+
+            <meta
+              itemProp="seller"
+              content="Sanu Builds"
             />
 
             <span
@@ -1636,7 +2324,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
               <div className="flex items-center gap-2.5 flex-wrap">
                 {colors.map(
-                  (color) => (
+                  (
+                    color
+                  ) => (
                     <button
                       key={
                         color.name
@@ -1701,6 +2391,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                   className="text-xs font-semibold text-neutral-600 hover:text-neutral-950 flex items-center gap-1 underline"
                 >
                   <Ruler className="w-3.5 h-3.5" />
+
                   <span>
                     Size Guide
                   </span>
@@ -1725,7 +2416,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 }`}
               >
                 {sizes.map(
-                  (size) => {
+                  (
+                    size
+                  ) => {
                     const isOOS =
                       isSizeOutOfStock(
                         size
@@ -1824,7 +2517,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 </button>
 
                 <span className="w-8 text-center text-xs font-black text-neutral-900">
-                  {quantity}
+                  {
+                    quantity
+                  }
                 </span>
 
                 <button
