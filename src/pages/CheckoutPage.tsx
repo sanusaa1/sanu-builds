@@ -26,10 +26,8 @@ interface CheckoutPageProps {
 }
 
 /**
+ * Removes undefined values recursively.
  * Firestore does not allow undefined values.
- *
- * This helper recursively removes undefined values
- * from objects and arrays before sending data to Firestore.
  */
 const removeUndefined = <T,>(value: T): T => {
   if (Array.isArray(value)) {
@@ -107,16 +105,13 @@ export const CheckoutPage: React.FC<
   const [
     paymentMethod,
     setPaymentMethod,
-  ] = useState<PaymentMethod>('card');
+  ] = useState<PaymentMethod>('upi');
 
   const [
     placingOrder,
     setPlacingOrder,
   ] = useState<boolean>(false);
 
-  /*
-   * Address form
-   */
   const [
     addressForm,
     setAddressForm,
@@ -128,35 +123,33 @@ export const CheckoutPage: React.FC<
     city: '',
     state: '',
     postalCode: '',
-    country: 'United States',
+    country: 'India',
     landmark: '',
     isDefault: true,
   });
 
   /*
-   * Payment mock fields
+   * Indian payment fields
    */
   const [
     cardNumber,
     setCardNumber,
-  ] = useState(
-    '4242 •••• •••• 4242'
-  );
+  ] = useState('');
 
   const [
     cardExpiry,
     setCardExpiry,
-  ] = useState('12/28');
+  ] = useState('');
 
   const [
     cardCvc,
     setCardCvc,
-  ] = useState('888');
+  ] = useState('');
 
   const [
     upiId,
     setUpiId,
-  ] = useState('builder@okaxis');
+  ] = useState('');
 
   /*
    * Load saved addresses
@@ -216,7 +209,7 @@ export const CheckoutPage: React.FC<
         setIsAddingNewAddress(true);
 
         toastError(
-          'Could not load saved addresses.'
+          'Saved addresses load nahi ho paaye.'
         );
       }
     };
@@ -234,8 +227,7 @@ export const CheckoutPage: React.FC<
   ]);
 
   /*
-   * Sync profile information into
-   * address form.
+   * Sync profile information
    */
   useEffect(() => {
     if (!userProfile) {
@@ -258,6 +250,39 @@ export const CheckoutPage: React.FC<
   }, [userProfile]);
 
   /*
+   * Validate Indian phone number
+   */
+  const isValidIndianPhone = (
+    phone: string
+  ) => {
+    const cleaned = phone.replace(
+      /\D/g,
+      ''
+    );
+
+    const normalized =
+      cleaned.startsWith('91') &&
+      cleaned.length === 12
+        ? cleaned.slice(2)
+        : cleaned;
+
+    return /^[6-9]\d{9}$/.test(
+      normalized
+    );
+  };
+
+  /*
+   * Validate Indian PIN code
+   */
+  const isValidIndianPin = (
+    postalCode: string
+  ) => {
+    return /^[1-9][0-9]{5}$/.test(
+      postalCode.trim()
+    );
+  };
+
+  /*
    * Validate address
    */
   const isAddressValid = (
@@ -265,12 +290,39 @@ export const CheckoutPage: React.FC<
   ) => {
     return Boolean(
       address.fullName?.trim() &&
-        address.phone?.trim() &&
-        address.addressLine1?.trim() &&
-        address.city?.trim() &&
-        address.state?.trim() &&
-        address.postalCode?.trim()
+      address.phone?.trim() &&
+      address.addressLine1?.trim() &&
+      address.city?.trim() &&
+      address.state?.trim() &&
+      address.postalCode?.trim() &&
+      isValidIndianPhone(
+        address.phone
+      ) &&
+      isValidIndianPin(
+        address.postalCode
+      )
     );
+  };
+
+  /*
+   * Normalize Indian phone
+   */
+  const normalizePhone = (
+    phone: string
+  ) => {
+    const cleaned = phone.replace(
+      /\D/g,
+      ''
+    );
+
+    if (
+      cleaned.startsWith('91') &&
+      cleaned.length === 12
+    ) {
+      return `+91 ${cleaned.slice(2)}`;
+    }
+
+    return `+91 ${cleaned}`;
   };
 
   /*
@@ -281,9 +333,31 @@ export const CheckoutPage: React.FC<
   ) => {
     event.preventDefault();
 
+    if (
+      !isValidIndianPhone(
+        addressForm.phone
+      )
+    ) {
+      toastError(
+        'Valid 10-digit Indian mobile number enter karein.'
+      );
+      return;
+    }
+
+    if (
+      !isValidIndianPin(
+        addressForm.postalCode
+      )
+    ) {
+      toastError(
+        'Valid 6-digit Indian PIN code enter karein.'
+      );
+      return;
+    }
+
     if (!isAddressValid(addressForm)) {
       toastError(
-        'Please fill out all required address fields.'
+        'Please delivery address ke saare required fields fill karein.'
       );
       return;
     }
@@ -310,8 +384,9 @@ export const CheckoutPage: React.FC<
           fullName:
             addressForm.fullName.trim(),
 
-          phone:
-            addressForm.phone.trim(),
+          phone: normalizePhone(
+            addressForm.phone
+          ),
 
           addressLine1:
             addressForm.addressLine1.trim(),
@@ -329,16 +404,16 @@ export const CheckoutPage: React.FC<
           postalCode:
             addressForm.postalCode.trim(),
 
-          country:
-            addressForm.country?.trim() ||
-            'United States',
+          country: 'India',
 
           landmark:
             addressForm.landmark?.trim() ||
             null,
 
           isDefault:
-            Boolean(addressForm.isDefault),
+            Boolean(
+              addressForm.isDefault
+            ),
         });
 
       const saved =
@@ -354,12 +429,14 @@ export const CheckoutPage: React.FC<
         ]
       );
 
-      setSelectedAddressId(saved.id);
+      setSelectedAddressId(
+        saved.id
+      );
 
       setIsAddingNewAddress(false);
 
       success(
-        'Address saved successfully.'
+        'Indian delivery address saved successfully.'
       );
     } catch (err) {
       console.error(
@@ -368,7 +445,7 @@ export const CheckoutPage: React.FC<
       );
 
       toastError(
-        'Could not save address. Please try again.'
+        'Address save nahi ho paaya. Please try again.'
       );
     }
   };
@@ -379,7 +456,10 @@ export const CheckoutPage: React.FC<
   const handleSelectAddress = (
     addressId: string
   ) => {
-    setSelectedAddressId(addressId);
+    setSelectedAddressId(
+      addressId
+    );
+
     setIsAddingNewAddress(false);
   };
 
@@ -392,9 +472,7 @@ export const CheckoutPage: React.FC<
     }
 
     /*
-     * -----------------------------------------
-     * STEP 1: Resolve active address
-     * -----------------------------------------
+     * Resolve active address
      */
     let activeAddress: Address;
 
@@ -405,10 +483,12 @@ export const CheckoutPage: React.FC<
       savedAddresses.length === 0
     ) {
       if (
-        !isAddressValid(addressForm)
+        !isAddressValid(
+          addressForm
+        )
       ) {
         toastError(
-          'Please provide a complete delivery address.'
+          'Please complete Indian delivery address correctly.'
         );
         return;
       }
@@ -422,8 +502,9 @@ export const CheckoutPage: React.FC<
           fullName:
             addressForm.fullName.trim(),
 
-          phone:
-            addressForm.phone.trim(),
+          phone: normalizePhone(
+            addressForm.phone
+          ),
 
           addressLine1:
             addressForm.addressLine1.trim(),
@@ -441,16 +522,16 @@ export const CheckoutPage: React.FC<
           postalCode:
             addressForm.postalCode.trim(),
 
-          country:
-            addressForm.country?.trim() ||
-            'United States',
+          country: 'India',
 
           landmark:
             addressForm.landmark?.trim() ||
             null,
 
           isDefault:
-            Boolean(addressForm.isDefault),
+            Boolean(
+              addressForm.isDefault
+            ),
         });
     } else {
       const foundAddress =
@@ -474,22 +555,27 @@ export const CheckoutPage: React.FC<
     }
 
     /*
-     * -----------------------------------------
-     * STEP 2: Calculate shipping
-     * -----------------------------------------
+     * Indian shipping
+     *
+     * Standard:
+     * CartContext se calculated shipping
+     *
+     * Express:
+     * + ₹149
      */
     const baseShipping =
       Number(shippingFee) || 0;
 
+    const expressCharge = 149;
+
     const finalShipping =
       deliveryMethod === 'express'
-        ? baseShipping + 8
+        ? baseShipping +
+          expressCharge
         : baseShipping;
 
     /*
-     * -----------------------------------------
-     * STEP 3: Calculate totals
-     * -----------------------------------------
+     * Totals
      */
     const safeSubtotal =
       Number(subtotal) || 0;
@@ -511,23 +597,14 @@ export const CheckoutPage: React.FC<
       ) / 100;
 
     /*
-     * -----------------------------------------
-     * STEP 4: Coupon
-     *
-     * NEVER send undefined to Firestore.
-     * -----------------------------------------
+     * Coupon
      */
     const couponCode =
       appliedCoupon?.code?.trim() ||
       null;
 
     /*
-     * -----------------------------------------
-     * STEP 5: Clean cart items
-     *
-     * This protects against undefined
-     * fields inside cart objects too.
-     * -----------------------------------------
+     * Clean cart items
      */
     const safeItems = cart.map(
       (item) =>
@@ -548,91 +625,127 @@ export const CheckoutPage: React.FC<
 
           size:
             item.size || null,
+
+          color:
+            item.color || null,
         })
     );
 
     /*
-     * -----------------------------------------
-     * STEP 6: Create Firestore-safe order
-     * -----------------------------------------
+     * Payment details
+     *
+     * Only store safe identifiers.
+     * Never store full card number/CVV.
      */
-    const orderData = removeUndefined({
-      userId:
-        currentUser?.uid || 'guest',
+    const safePaymentDetails =
+      removeUndefined({
+        paymentMethod:
+          paymentMethod || 'upi',
 
-      customerName:
-        activeAddress.fullName || '',
+        upiId:
+          paymentMethod === 'upi'
+            ? upiId.trim() || null
+            : null,
 
-      customerEmail:
-        currentUser?.email ||
-        'guest@sanubuilds.com',
-
-      customerPhone:
-        activeAddress.phone || '',
-
-      items: safeItems,
-
-      shippingAddress:
-        activeAddress,
-
-      subtotal:
-        safeSubtotal,
-
-      discount:
-        safeDiscount,
-
-      /*
-       * IMPORTANT:
-       * null is allowed by Firestore.
-       * undefined is NOT allowed.
-       */
-      couponCode:
-        couponCode,
-
-      shippingFee:
-        finalShipping,
-
-      tax:
-        safeTax,
-
-      total:
-        finalTotal,
-
-      paymentMethod:
-        paymentMethod || 'card',
-
-      paymentStatus:
-        paymentMethod === 'cod'
-          ? 'pending'
-          : 'paid',
-
-      orderStatus:
-        'confirmed',
-
-      carrierName:
-        deliveryMethod === 'express'
-          ? 'FedEx Priority Air'
-          : 'Expedited Standard Ground',
-
-      estimatedDelivery:
-        deliveryMethod === 'express'
-          ? '1 - 2 Business Days'
-          : '3 - 5 Business Days',
-
-      deliveryMethod:
-        deliveryMethod,
-
-      createdAt:
-        new Date().toISOString(),
-    });
+        cardLast4:
+          paymentMethod === 'card' &&
+          cardNumber
+            ? cardNumber
+                .replace(/\D/g, '')
+                .slice(-4) || null
+            : null,
+      });
 
     /*
-     * Debug:
-     * Check if anything undefined
-     * somehow remains.
+     * Firestore-safe order
      */
+    const orderData =
+      removeUndefined({
+        userId:
+          currentUser?.uid ||
+          'guest',
+
+        customerName:
+          activeAddress.fullName ||
+          '',
+
+        customerEmail:
+          currentUser?.email ||
+          'guest@sanubuilds.com',
+
+        customerPhone:
+          activeAddress.phone || '',
+
+        items:
+          safeItems,
+
+        shippingAddress:
+          activeAddress,
+
+        subtotal:
+          safeSubtotal,
+
+        discount:
+          safeDiscount,
+
+        couponCode:
+          couponCode,
+
+        shippingFee:
+          finalShipping,
+
+        tax:
+          safeTax,
+
+        total:
+          finalTotal,
+
+        currency: 'INR',
+
+        currencySymbol: '₹',
+
+        paymentMethod:
+          paymentMethod || 'upi',
+
+        paymentDetails:
+          safePaymentDetails,
+
+        /*
+         * COD stays pending.
+         *
+         * Online payment should only become
+         * paid after Razorpay/payment gateway
+         * confirms the transaction.
+         */
+        paymentStatus:
+          paymentMethod === 'cod'
+            ? 'pending'
+            : 'pending',
+
+        orderStatus:
+          'pending',
+
+        carrierName:
+          deliveryMethod === 'express'
+            ? 'Delhivery / Express Courier'
+            : 'Delhivery / Standard Courier',
+
+        estimatedDelivery:
+          deliveryMethod === 'express'
+            ? '1 - 3 Business Days'
+            : '3 - 7 Business Days',
+
+        deliveryMethod:
+          deliveryMethod,
+
+        country: 'India',
+
+        createdAt:
+          new Date().toISOString(),
+      });
+
     console.log(
-      'Creating Firestore order:',
+      'Creating Indian Firestore order:',
       orderData
     );
 
@@ -640,9 +753,7 @@ export const CheckoutPage: React.FC<
 
     try {
       /*
-       * -----------------------------------------
-       * STEP 7: Create order
-       * -----------------------------------------
+       * Create order
        */
       const orderResult =
         await createOrder(
@@ -650,18 +761,11 @@ export const CheckoutPage: React.FC<
         );
 
       /*
-       * -----------------------------------------
-       * STEP 8: Clear cart ONLY after
+       * Clear cart only after
        * successful order creation
-       * -----------------------------------------
        */
       await clearCart();
 
-      /*
-       * -----------------------------------------
-       * STEP 9: Success
-       * -----------------------------------------
-       */
       success(
         `Order #${orderResult.orderNumber} placed successfully!`
       );
@@ -676,7 +780,7 @@ export const CheckoutPage: React.FC<
       );
 
       toastError(
-        'Could not process order. Please check connection and try again.'
+        'Order process nahi ho paaya. Internet connection check karke dobara try karein.'
       );
     } finally {
       setPlacingOrder(false);
@@ -684,11 +788,12 @@ export const CheckoutPage: React.FC<
   };
 
   /*
-   * Express shipping display
+   * Display total
    */
   const displayTotal =
     deliveryMethod === 'express'
-      ? Number(total || 0) + 8
+      ? Number(total || 0) +
+        expressShippingCharge()
       : Number(total || 0);
 
   /*
@@ -706,7 +811,7 @@ export const CheckoutPage: React.FC<
 
         <div>
           <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">
-            Secure 256-Bit SSL Checkout
+            Secure Indian Checkout
           </span>
 
           <h1 className="text-2xl sm:text-3xl font-black text-neutral-900 tracking-tight uppercase mt-0.5">
@@ -716,8 +821,9 @@ export const CheckoutPage: React.FC<
 
         <div className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200 text-xs font-bold">
           <Lock className="w-3.5 h-3.5" />
+
           <span>
-            Encrypted Payment
+            Secure Payment
           </span>
         </div>
 
@@ -757,6 +863,7 @@ export const CheckoutPage: React.FC<
                     className="text-xs font-bold text-neutral-900 hover:underline flex items-center gap-1"
                   >
                     <Plus className="w-3.5 h-3.5" />
+
                     <span>
                       Add New Address
                     </span>
@@ -819,7 +926,7 @@ export const CheckoutPage: React.FC<
                       </p>
 
                       <p className="text-xs text-neutral-500 font-mono">
-                        Phone:{' '}
+                        India •{' '}
                         {address.phone}
                       </p>
 
@@ -832,7 +939,7 @@ export const CheckoutPage: React.FC<
 
             ) : (
 
-              /* NEW ADDRESS FORM */
+              /* NEW ADDRESS */
               <form
                 onSubmit={
                   handleSaveNewAddress
@@ -850,7 +957,7 @@ export const CheckoutPage: React.FC<
                     <input
                       type="text"
                       required
-                      placeholder="e.g. Alex Rivers"
+                      placeholder="e.g. Thansingh Kumar"
                       value={
                         addressForm.fullName
                       }
@@ -870,12 +977,14 @@ export const CheckoutPage: React.FC<
 
                   <div>
                     <label className="block text-xs font-bold text-neutral-700 mb-1">
-                      Phone Number *
+                      Mobile Number *
                     </label>
 
                     <input
                       type="tel"
                       required
+                      inputMode="numeric"
+                      maxLength={13}
                       placeholder="+91 9876543210"
                       value={
                         addressForm.phone
@@ -892,13 +1001,17 @@ export const CheckoutPage: React.FC<
                       }
                       className="w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-300 rounded-lg focus:outline-none focus:border-neutral-900"
                     />
+
+                    <p className="text-[10px] text-neutral-400 mt-1">
+                      Indian mobile number
+                    </p>
                   </div>
 
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-neutral-700 mb-1">
-                    Street Address *
+                    House / Street / Area *
                   </label>
 
                   <input
@@ -924,7 +1037,7 @@ export const CheckoutPage: React.FC<
 
                 <div>
                   <label className="block text-xs font-bold text-neutral-700 mb-1">
-                    Address Line 2
+                    Apartment / Building / Floor
                   </label>
 
                   <input
@@ -958,7 +1071,7 @@ export const CheckoutPage: React.FC<
                     <input
                       type="text"
                       required
-                      placeholder="City"
+                      placeholder="e.g. Jaipur"
                       value={
                         addressForm.city
                       }
@@ -984,7 +1097,7 @@ export const CheckoutPage: React.FC<
                     <input
                       type="text"
                       required
-                      placeholder="State"
+                      placeholder="e.g. Rajasthan"
                       value={
                         addressForm.state
                       }
@@ -1004,13 +1117,15 @@ export const CheckoutPage: React.FC<
 
                   <div>
                     <label className="block text-xs font-bold text-neutral-700 mb-1">
-                      Postal Code *
+                      PIN Code *
                     </label>
 
                     <input
                       type="text"
                       required
-                      placeholder="Postal Code"
+                      inputMode="numeric"
+                      maxLength={6}
+                      placeholder="302001"
                       value={
                         addressForm.postalCode
                       }
@@ -1020,7 +1135,15 @@ export const CheckoutPage: React.FC<
                             ...previous,
                             postalCode:
                               event.target
-                                .value,
+                                .value
+                                .replace(
+                                  /\D/g,
+                                  ''
+                                )
+                                .slice(
+                                  0,
+                                  6
+                                ),
                           })
                         )
                       }
@@ -1086,7 +1209,7 @@ export const CheckoutPage: React.FC<
 
           </div>
 
-          {/* DELIVERY METHOD */}
+          {/* DELIVERY */}
           <div className="bg-white rounded-xl border border-neutral-200 p-6 space-y-4 shadow-xs">
 
             <div className="flex items-center gap-2 border-b border-neutral-100 pb-3">
@@ -1103,6 +1226,7 @@ export const CheckoutPage: React.FC<
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 
+              {/* STANDARD */}
               <button
                 type="button"
                 onClick={() =>
@@ -1120,11 +1244,11 @@ export const CheckoutPage: React.FC<
 
                 <div>
                   <span className="text-xs font-bold text-neutral-900 block">
-                    Standard Tracked Courier
+                    Standard Delivery
                   </span>
 
                   <span className="text-[11px] text-neutral-500">
-                    3 - 5 Business Days
+                    3 - 7 Business Days
                   </span>
                 </div>
 
@@ -1136,6 +1260,7 @@ export const CheckoutPage: React.FC<
 
               </button>
 
+              {/* EXPRESS */}
               <button
                 type="button"
                 onClick={() =>
@@ -1153,16 +1278,16 @@ export const CheckoutPage: React.FC<
 
                 <div>
                   <span className="text-xs font-bold text-neutral-900 block">
-                    FedEx Priority Air
+                    Express Delivery
                   </span>
 
                   <span className="text-[11px] text-neutral-500">
-                    1 - 2 Business Days
+                    1 - 3 Business Days
                   </span>
                 </div>
 
                 <span className="text-xs font-black text-neutral-950">
-                  +$8.00
+                  +₹149
                 </span>
 
               </button>
@@ -1190,59 +1315,108 @@ export const CheckoutPage: React.FC<
 
               {[
                 {
-                  id: 'card',
-                  label: 'Credit Card',
-                  icon: CreditCard,
-                },
-                {
-                  id: 'razorpay',
-                  label: 'Razorpay / Net',
+                  id: 'upi',
+                  label: 'UPI',
                   icon: Sparkles,
                 },
                 {
-                  id: 'upi',
-                  label: 'UPI / QR',
-                  icon: Lock,
+                  id: 'razorpay',
+                  label: 'Razorpay',
+                  icon: CreditCard,
+                },
+                {
+                  id: 'card',
+                  label: 'Debit / Credit Card',
+                  icon: CreditCard,
                 },
                 {
                   id: 'cod',
-                  label: 'Cash On Delivery',
+                  label: 'Cash on Delivery',
                   icon: Truck,
                 },
-              ].map((method) => (
+              ].map(
+                (method) => (
+                  <button
+                    key={method.id}
+                    type="button"
+                    onClick={() =>
+                      setPaymentMethod(
+                        method.id as PaymentMethod
+                      )
+                    }
+                    className={`p-3 rounded-lg border-2 text-left transition-all flex flex-col items-center justify-center gap-1.5 ${
+                      paymentMethod ===
+                      method.id
+                        ? 'border-neutral-950 bg-neutral-950 text-white shadow-xs'
+                        : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-400'
+                    }`}
+                  >
 
-                <button
-                  key={method.id}
-                  type="button"
-                  onClick={() =>
-                    setPaymentMethod(
-                      method.id as PaymentMethod
-                    )
-                  }
-                  className={`p-3 rounded-lg border-2 text-left transition-all flex flex-col items-center justify-center gap-1.5 ${
-                    paymentMethod ===
-                    method.id
-                      ? 'border-neutral-950 bg-neutral-950 text-white shadow-xs'
-                      : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-400'
-                  }`}
-                >
+                    <method.icon className="w-4 h-4" />
 
-                  <method.icon className="w-4 h-4" />
+                    <span className="text-[11px] font-bold text-center">
+                      {method.label}
+                    </span>
 
-                  <span className="text-[11px] font-bold text-center">
-                    {method.label}
-                  </span>
-
-                </button>
-
-              ))}
+                  </button>
+                )
+              )}
 
             </div>
+
+            {/* UPI */}
+            {paymentMethod ===
+              'upi' && (
+              <div className="p-4 bg-neutral-50 rounded-xl border border-neutral-200 space-y-2">
+
+                <label className="block text-[11px] font-bold text-neutral-600">
+                  UPI ID
+                </label>
+
+                <input
+                  type="text"
+                  placeholder="yourname@upi"
+                  value={upiId}
+                  onChange={(event) =>
+                    setUpiId(
+                      event.target.value
+                    )
+                  }
+                  className="w-full px-3 py-2 text-xs bg-white border border-neutral-300 rounded-lg font-mono focus:outline-none"
+                />
+
+                <p className="text-[10px] text-neutral-400">
+                  Example: name@oksbi,
+                  name@okaxis,
+                  name@ybl
+                </p>
+
+              </div>
+            )}
+
+            {/* RAZORPAY */}
+            {paymentMethod ===
+              'razorpay' && (
+              <div className="p-4 bg-neutral-50 rounded-xl border border-neutral-200">
+
+                <div className="flex items-center gap-2 text-xs text-neutral-600">
+
+                  <Sparkles className="w-4 h-4 text-neutral-900" />
+
+                  <span>
+                    Razorpay se UPI, Cards,
+                    Net Banking aur Wallets
+                    securely accept kiye ja sakte hain.
+                  </span>
+
+                </div>
+
+              </div>
+            )}
 
             {/* CARD */}
             {paymentMethod ===
               'card' && (
-
               <div className="p-4 bg-neutral-50 rounded-xl border border-neutral-200 space-y-3">
 
                 <div>
@@ -1252,6 +1426,9 @@ export const CheckoutPage: React.FC<
 
                   <input
                     type="text"
+                    inputMode="numeric"
+                    maxLength={19}
+                    placeholder="1234 5678 9012 3456"
                     value={cardNumber}
                     onChange={(event) =>
                       setCardNumber(
@@ -1266,11 +1443,13 @@ export const CheckoutPage: React.FC<
 
                   <div>
                     <label className="block text-[11px] font-bold text-neutral-600 mb-1">
-                      Expiry Date
+                      Expiry
                     </label>
 
                     <input
                       type="text"
+                      maxLength={5}
+                      placeholder="MM/YY"
                       value={cardExpiry}
                       onChange={(event) =>
                         setCardExpiry(
@@ -1288,6 +1467,9 @@ export const CheckoutPage: React.FC<
 
                     <input
                       type="password"
+                      inputMode="numeric"
+                      maxLength={4}
+                      placeholder="•••"
                       value={cardCvc}
                       onChange={(event) =>
                         setCardCvc(
@@ -1300,49 +1482,10 @@ export const CheckoutPage: React.FC<
 
                 </div>
 
-              </div>
-            )}
-
-            {/* UPI */}
-            {paymentMethod ===
-              'upi' && (
-
-              <div className="p-4 bg-neutral-50 rounded-xl border border-neutral-200 space-y-2">
-
-                <label className="block text-[11px] font-bold text-neutral-600">
-                  Virtual Payment Address (VPA)
-                </label>
-
-                <input
-                  type="text"
-                  value={upiId}
-                  onChange={(event) =>
-                    setUpiId(
-                      event.target.value
-                    )
-                  }
-                  className="w-full px-3 py-2 text-xs bg-white border border-neutral-300 rounded-lg font-mono focus:outline-none"
-                />
-
-              </div>
-            )}
-
-            {/* RAZORPAY */}
-            {paymentMethod ===
-              'razorpay' && (
-
-              <div className="p-4 bg-neutral-50 rounded-xl border border-neutral-200">
-
-                <div className="flex items-center gap-2 text-xs text-neutral-600">
-
-                  <Sparkles className="w-4 h-4 text-neutral-900" />
-
-                  <span>
-                    Razorpay / Net Banking payment will
-                    be processed securely.
-                  </span>
-
-                </div>
+                <p className="text-[10px] text-neutral-400">
+                  Card details securely payment
+                  gateway ke through process hone chahiye.
+                </p>
 
               </div>
             )}
@@ -1350,7 +1493,6 @@ export const CheckoutPage: React.FC<
             {/* COD */}
             {paymentMethod ===
               'cod' && (
-
               <div className="p-4 bg-neutral-50 rounded-xl border border-neutral-200">
 
                 <div className="flex items-center gap-2 text-xs text-neutral-600">
@@ -1358,7 +1500,8 @@ export const CheckoutPage: React.FC<
                   <Truck className="w-4 h-4 text-neutral-900" />
 
                   <span>
-                    Pay when your order is delivered.
+                    Order delivery ke time
+                    cash payment karein.
                   </span>
 
                 </div>
@@ -1377,57 +1520,68 @@ export const CheckoutPage: React.FC<
 
             <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-900 border-b border-neutral-100 pb-3">
               Order Review ({cart.length}{' '}
-              styles)
+              {cart.length === 1
+                ? 'item'
+                : 'items'})
             </h3>
 
             {/* ITEMS */}
             <div className="max-h-48 overflow-y-auto space-y-2 divide-y divide-neutral-100 pr-1">
 
-              {cart.map((item) => (
+              {cart.map(
+                (item) => (
 
-                <div
-                  key={item.id}
-                  className="pt-2 first:pt-0 flex items-center justify-between gap-3 text-xs"
-                >
+                  <div
+                    key={item.id}
+                    className="pt-2 first:pt-0 flex items-center justify-between gap-3 text-xs"
+                  >
 
-                  <img
-                    src={item.image || ''}
-                    alt={item.name || 'Product'}
-                    referrerPolicy="no-referrer"
-                    className="w-9 h-9 rounded object-cover border border-neutral-200 shrink-0"
-                  />
+                    <img
+                      src={
+                        item.image ||
+                        ''
+                      }
+                      alt={
+                        item.name ||
+                        'Product'
+                      }
+                      referrerPolicy="no-referrer"
+                      className="w-9 h-9 rounded object-cover border border-neutral-200 shrink-0"
+                    />
 
-                  <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0">
 
-                    <p className="font-semibold text-neutral-900 truncate">
-                      {item.name}
-                    </p>
+                      <p className="font-semibold text-neutral-900 truncate">
+                        {item.name}
+                      </p>
 
-                    <p className="text-[11px] text-neutral-400">
-                      {item.size || 'Standard'}{' '}
-                      • Qty{' '}
-                      {Number(
-                        item.quantity
-                      ) || 1}
-                    </p>
+                      <p className="text-[11px] text-neutral-400">
+                        {item.size ||
+                          'Standard'}{' '}
+                        • Qty{' '}
+                        {Number(
+                          item.quantity
+                        ) || 1}
+                      </p>
+
+                    </div>
+
+                    <span className="font-bold text-neutral-900 shrink-0">
+                      ₹
+                      {(
+                        (Number(
+                          item.price
+                        ) || 0) *
+                        (Number(
+                          item.quantity
+                        ) || 1)
+                      ).toFixed(2)}
+                    </span>
 
                   </div>
 
-                  <span className="font-bold text-neutral-900 shrink-0">
-                    $
-                    {(
-                      (Number(
-                        item.price
-                      ) || 0) *
-                      (Number(
-                        item.quantity
-                      ) || 1)
-                    ).toFixed(2)}
-                  </span>
-
-                </div>
-
-              ))}
+                )
+              )}
 
             </div>
 
@@ -1441,7 +1595,7 @@ export const CheckoutPage: React.FC<
                 </span>
 
                 <span className="font-semibold text-neutral-900">
-                  $
+                  ₹
                   {(
                     Number(
                       subtotal
@@ -1464,7 +1618,7 @@ export const CheckoutPage: React.FC<
                   </span>
 
                   <span>
-                    -$
+                    -₹
                     {(
                       Number(
                         discount
@@ -1481,7 +1635,7 @@ export const CheckoutPage: React.FC<
                   Shipping (
                   {deliveryMethod ===
                   'express'
-                    ? 'Priority Air'
+                    ? 'Express'
                     : 'Standard'}
                   )
                 </span>
@@ -1490,17 +1644,17 @@ export const CheckoutPage: React.FC<
 
                   {deliveryMethod ===
                   'express'
-                    ? `$${(
+                    ? `₹${(
                         (Number(
                           shippingFee
                         ) || 0) +
-                        8
+                        expressShippingCharge()
                       ).toFixed(2)}`
                     : Number(
                         shippingFee
                       ) === 0
                     ? 'FREE'
-                    : `$${(
+                    : `₹${(
                         Number(
                           shippingFee
                         ) || 0
@@ -1513,11 +1667,11 @@ export const CheckoutPage: React.FC<
               <div className="flex justify-between">
 
                 <span>
-                  Estimated Tax
+                  GST / Tax
                 </span>
 
                 <span className="font-semibold text-neutral-900">
-                  $
+                  ₹
                   {(
                     Number(tax) ||
                     0
@@ -1533,7 +1687,7 @@ export const CheckoutPage: React.FC<
                 </span>
 
                 <span className="text-xl font-black text-neutral-950">
-                  $
+                  ₹
                   {displayTotal.toFixed(
                     2
                   )}
@@ -1568,7 +1722,7 @@ export const CheckoutPage: React.FC<
                   <ShieldCheck className="w-4 h-4" />
 
                   <span>
-                    Place Order • $
+                    Place Order • ₹
                     {displayTotal.toFixed(
                       2
                     )}
@@ -1580,9 +1734,10 @@ export const CheckoutPage: React.FC<
             </button>
 
             <p className="text-[10px] text-neutral-400 text-center leading-normal">
-              By confirming, you agree to
-              Sanu Builds Terms of Service
-              and 30-Day Return Policy.
+              Order confirm karke aap
+              Sanu Builds Terms of
+              Service aur Return Policy
+              accept karte hain.
             </p>
 
           </div>
@@ -1596,7 +1751,7 @@ export const CheckoutPage: React.FC<
 };
 
 /*
- * Standard shipping display helper.
+ * Standard shipping display
  */
 const baseShippingDisplay = (
   shipping: number
@@ -1606,5 +1761,12 @@ const baseShippingDisplay = (
 
   return value === 0
     ? 'FREE'
-    : `$${value.toFixed(2)}`;
+    : `₹${value.toFixed(2)}`;
+};
+
+/*
+ * Indian express delivery charge
+ */
+const expressShippingCharge = (): number => {
+  return 149;
 };
