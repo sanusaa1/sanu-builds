@@ -1,0 +1,95 @@
+{
+  "entities": {
+    "users": {
+      "fields": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "role": { "type": "string", "enum": ["customer", "admin"] },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      }
+    },
+    "products": {
+      "fields": {
+        "name": { "type": "string" },
+        "slug": { "type": "string" },
+        "description": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "brand": { "type": "string" },
+        "price": { "type": "number" },
+        "compareAtPrice": { "type": "number" },
+        "discountPercentage": { "type": "number" },
+        "images": { "type": "array" },
+        "sizes": { "type": "array" },
+        "colors": { "type": "array" },
+        "variants": { "type": "array" },
+        "stock": { "type": "number" },
+        "sku": { "type": "string" },
+        "rating": { "type": "number" },
+        "reviewCount": { "type": "number" },
+        "tags": { "type": "array" },
+        "featured": { "type": "boolean" },
+        "bestseller": { "type": "boolean" },
+        "newArrival": { "type": "boolean" },
+        "active": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      }
+    },
+    "categories": {
+      "fields": {
+        "name": { "type": "string" },
+        "slug": { "type": "string" },
+        "description": { "type": "string" },
+        "image": { "type": "string" },
+        "featured": { "type": "boolean" }
+      }
+    },
+    "orders": {
+      "fields": {
+        "orderNumber": { "type": "string" },
+        "userId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "customerEmail": { "type": "string" },
+        "items": { "type": "array" },
+        "address": { "type": "object" },
+        "subtotal": { "type": "number" },
+        "discount": { "type": "number" },
+        "shipping": { "type": "number" },
+        "tax": { "type": "number" },
+        "total": { "type": "number" },
+        "paymentMethod": { "type": "string" },
+        "paymentStatus": { "type": "string" },
+        "orderStatus": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      }
+    },
+    "coupons": {
+      "fields": {
+        "code": { "type": "string" },
+        "discountType": { "type": "string" },
+        "discountValue": { "type": "number" },
+        "minimumOrderValue": { "type": "number" },
+        "maximumDiscount": { "type": "number" },
+        "usageLimit": { "type": "number" },
+        "usedCount": { "type": "number" },
+        "active": { "type": "boolean" }
+      }
+    },
+    "reviews": {
+      "fields": {
+        "userId": { "type": "string" },
+        "productId": { "type": "string" },
+        "orderId": { "type": "string" },
+        "rating": { "type": "number" },
+        "title": { "type": "string" },
+        "comment": { "type": "string" },
+        "createdAt": { "type": "string" }
+      }
+    }
+  }
+}
