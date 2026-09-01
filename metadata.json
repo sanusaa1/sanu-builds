@@ -1,6 +1,0 @@
-{
-  "name": "Sanu Builds — Premium T-Shirts",
-  "description": "Production-ready mobile-first fashion e-commerce platform for Sanu Builds selling premium apparel and minimalist T-shirts.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
