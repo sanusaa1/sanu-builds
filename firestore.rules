@@ -1,104 +1,853 @@
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  updateDoc,
+  query,
+  where,
+  orderBy,
+  runTransaction,
+} from 'firebase/firestore';
 
-    // Helper functions
-    function isAuthenticated() {
-      return request.auth != null;
-    }
+import { db } from '../lib/firebase';
+import {
+  Order,
+  OrderStatus,
+  PaymentStatus,
+  Product,
+  ProductVariant,
+} from '../types';
 
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
+import { createUserNotification } from './userService';
 
-    function isAdmin() {
-      return isAuthenticated() && 
-        (
-          get(/databases/{database}/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-          (request.auth.token.email != null && request.auth.token.email in ['admin@sanubuilds.com', 'anritvox@gmail.com'])
+const ORDERS_COLLECTION = 'orders';
+const PRODUCTS_COLLECTION = 'products';
+
+/* =========================================================
+   HELPERS
+========================================================= */
+
+/**
+ * Generates a readable and practically unique Sanu Builds
+ * order reference.
+ *
+ * Example:
+ * SB-A7F42C91
+ */
+function generateOrderNumber(orderId: string): string {
+  return `SB-${orderId.slice(0, 8).toUpperCase()}`;
+}
+
+/**
+ * Returns a safe timestamp.
+ */
+function now(): string {
+  return new Date().toISOString();
+}
+
+/**
+ * Payment status should NEVER automatically become "paid"
+ * unless the checkout/payment layer explicitly confirms it.
+ */
+function getInitialPaymentStatus(
+  orderInput: Partial<Order>
+): PaymentStatus {
+  if (orderInput.paymentStatus) {
+    return orderInput.paymentStatus;
+  }
+
+  // COD is not paid at checkout.
+  if (orderInput.paymentMethod === 'cod') {
+    return 'pending';
+  }
+
+  return 'pending';
+}
+
+/**
+ * Determine initial order status.
+ *
+ * If the checkout explicitly passes a status, keep it.
+ * Otherwise start as pending.
+ */
+function getInitialOrderStatus(
+  orderInput: Partial<Order>
+): OrderStatus {
+  return orderInput.orderStatus || 'pending';
+}
+
+/**
+ * Finds the requested variant.
+ */
+function findVariant(
+  product: Product,
+  size: string,
+  color: string
+): ProductVariant | undefined {
+  if (!Array.isArray(product.variants)) {
+    return undefined;
+  }
+
+  return product.variants.find(
+    (variant) =>
+      String(variant.size).toLowerCase() ===
+        String(size).toLowerCase() &&
+      String(variant.color).toLowerCase() ===
+        String(color).toLowerCase()
+  );
+}
+
+/* =========================================================
+   CREATE ORDER
+========================================================= */
+
+/**
+ * Creates an order and adjusts inventory atomically.
+ *
+ * IMPORTANT:
+ * Order creation and stock deduction happen inside the
+ * SAME Firestore transaction.
+ *
+ * This prevents two customers from successfully buying
+ * the same last unit at the same time.
+ */
+export async function createOrder(
+  orderInput: Omit<
+    Order,
+    | 'id'
+    | 'orderNumber'
+    | 'createdAt'
+    | 'updatedAt'
+    | 'statusHistory'
+  >
+): Promise<Order> {
+  const orderRef = doc(
+    collection(db, ORDERS_COLLECTION)
+  );
+
+  const orderId = orderRef.id;
+  const timestamp = now();
+
+  const orderNumber =
+    generateOrderNumber(orderId);
+
+  const initialStatus =
+    getInitialOrderStatus(orderInput);
+
+  const initialPaymentStatus =
+    getInitialPaymentStatus(orderInput);
+
+  const newOrder: Order = {
+    ...orderInput,
+
+    id: orderId,
+
+    orderNumber,
+
+    orderStatus: initialStatus,
+
+    paymentStatus: initialPaymentStatus,
+
+    createdAt: timestamp,
+
+    updatedAt: timestamp,
+
+    statusHistory: [
+      {
+        status: 'pending',
+        timestamp,
+        note:
+          'Order placed by customer via Sanu Builds checkout.',
+      },
+
+      ...(initialStatus !== 'pending'
+        ? [
+            {
+              status: initialStatus,
+              timestamp,
+              note:
+                initialPaymentStatus === 'paid'
+                  ? `Payment received via ${orderInput.paymentMethod.toUpperCase()}. Order confirmed.`
+                  : `Order created via ${orderInput.paymentMethod.toUpperCase()}.`,
+            },
+          ]
+        : []),
+    ],
+  };
+
+  /* =======================================================
+     FIRESTORE TRANSACTION
+  ======================================================== */
+
+  await runTransaction(
+    db,
+    async (transaction) => {
+      /**
+       * First read every product that is required.
+       *
+       * Firestore transactions require reads before writes.
+       */
+      const productSnapshots = new Map<
+        string,
+        Awaited<ReturnType<typeof getDoc>>
+      >();
+
+      for (const item of newOrder.items) {
+        const productRef = doc(
+          db,
+          PRODUCTS_COLLECTION,
+          item.productId
         );
-    }
 
-    // Users Collection
-    match /users/{userId} {
-      allow read: if isOwner(userId) || isAdmin();
-      // Allow user creation without admin escalation, or admin can update anything
-      allow create: if isOwner(userId) && (
-        !('role' in request.resource.data) || 
-        request.resource.data.role == 'customer' || 
-        (request.auth.token.email in ['admin@sanubuilds.com', 'anritvox@gmail.com'])
+        if (!productSnapshots.has(item.productId)) {
+          const productSnap =
+            await transaction.get(productRef);
+
+          productSnapshots.set(
+            item.productId,
+            productSnap
+          );
+        }
+      }
+
+      /* ---------------------------------------------------
+         VALIDATE STOCK
+      --------------------------------------------------- */
+
+      for (const item of newOrder.items) {
+        const productSnap =
+          productSnapshots.get(item.productId);
+
+        if (!productSnap || !productSnap.exists()) {
+          throw new Error(
+            `Product not found: ${item.name}`
+          );
+        }
+
+        const product =
+          productSnap.data() as Product;
+
+        const quantity =
+          Number(item.quantity || 0);
+
+        if (quantity <= 0) {
+          throw new Error(
+            `Invalid quantity for ${item.name}`
+          );
+        }
+
+        /* -----------------------------------------------
+           VARIANT STOCK
+        ------------------------------------------------ */
+
+        const variant = findVariant(
+          product,
+          item.size,
+          item.color
+        );
+
+        if (variant) {
+          const variantStock =
+            Number(variant.stock || 0);
+
+          if (variantStock < quantity) {
+            throw new Error(
+              `Insufficient stock for ${item.name} (${item.size} / ${item.color}). Available: ${variantStock}`
+            );
+          }
+        } else {
+          /* ---------------------------------------------
+             PRODUCT LEVEL STOCK
+          ---------------------------------------------- */
+
+          const productStock =
+            Number(product.stock || 0);
+
+          if (productStock < quantity) {
+            throw new Error(
+              `Insufficient stock for ${item.name}. Available: ${productStock}`
+            );
+          }
+        }
+      }
+
+      /* ---------------------------------------------------
+         UPDATE STOCK
+      --------------------------------------------------- */
+
+      for (const item of newOrder.items) {
+        const productRef = doc(
+          db,
+          PRODUCTS_COLLECTION,
+          item.productId
+        );
+
+        const productSnap =
+          productSnapshots.get(item.productId);
+
+        if (!productSnap || !productSnap.exists()) {
+          throw new Error(
+            `Product not found: ${item.name}`
+          );
+        }
+
+        const product =
+          productSnap.data() as Product;
+
+        const quantity =
+          Number(item.quantity || 0);
+
+        const variant = findVariant(
+          product,
+          item.size,
+          item.color
+        );
+
+        /* -----------------------------------------------
+           VARIANT STOCK
+        ------------------------------------------------ */
+
+        if (variant) {
+          const updatedVariants =
+            product.variants.map(
+              (currentVariant) => {
+                const sameVariant =
+                  String(currentVariant.size)
+                    .toLowerCase() ===
+                    String(item.size)
+                      .toLowerCase() &&
+                  String(currentVariant.color)
+                    .toLowerCase() ===
+                    String(item.color)
+                      .toLowerCase();
+
+                if (!sameVariant) {
+                  return currentVariant;
+                }
+
+                return {
+                  ...currentVariant,
+                  stock:
+                    Number(currentVariant.stock || 0) -
+                    quantity,
+                };
+              }
+            );
+
+          /**
+           * Also maintain product-level stock.
+           * This keeps Product.stock consistent with
+           * the total variant inventory.
+           */
+          const totalVariantStock =
+            updatedVariants.reduce(
+              (sum, currentVariant) =>
+                sum +
+                Number(
+                  currentVariant.stock || 0
+                ),
+              0
+            );
+
+          transaction.update(productRef, {
+            variants: updatedVariants,
+
+            stock: totalVariantStock,
+
+            updatedAt: timestamp,
+          });
+        } else {
+          /* ---------------------------------------------
+             PRODUCT LEVEL STOCK
+          ---------------------------------------------- */
+
+          const currentStock =
+            Number(product.stock || 0);
+
+          const updatedStock =
+            currentStock - quantity;
+
+          transaction.update(productRef, {
+            stock: Math.max(
+              0,
+              updatedStock
+            ),
+
+            updatedAt: timestamp,
+          });
+        }
+      }
+
+      /* ---------------------------------------------------
+         CREATE ORDER
+      --------------------------------------------------- */
+
+      transaction.set(
+        orderRef,
+        newOrder
       );
-      allow update: if (isOwner(userId) && (
-        !('role' in request.resource.data) || 
-        request.resource.data.role == resource.data.role ||
-        (request.auth.token.email in ['admin@sanubuilds.com', 'anritvox@gmail.com'])
-      )) || isAdmin();
-      allow delete: if isAdmin();
-
-      // Cart subcollection
-      match /cart/{cartItemId} {
-        allow read, write: if isOwner(userId);
-      }
-
-      // Wishlist subcollection
-      match /wishlist/{wishlistItemId} {
-        allow read, write: if isOwner(userId);
-      }
-
-      // Addresses subcollection
-      match /addresses/{addressId} {
-        allow read, write: if isOwner(userId) || isAdmin();
-      }
-
-      // Notifications subcollection
-      match /notifications/{notificationId} {
-        allow read, update, delete: if isOwner(userId);
-        allow create: if isOwner(userId) || isAdmin();
-      }
     }
+  );
 
-    // Products Collection
-    match /products/{productId} {
-      allow read: if true;
-      allow create, update, delete: if isAdmin() || (isAuthenticated() && request.auth.token.email in ['admin@sanubuilds.com', 'anritvox@gmail.com']);
-    }
+  /* =======================================================
+     CUSTOMER NOTIFICATION
+  ======================================================== */
 
-    // Categories Collection
-    match /categories/{categoryId} {
-      allow read: if true;
-      allow create, update, delete: if isAdmin() || (isAuthenticated() && request.auth.token.email in ['admin@sanubuilds.com', 'anritvox@gmail.com']);
-    }
+  if (
+    newOrder.userId &&
+    newOrder.userId !== 'guest'
+  ) {
+    try {
+      await createUserNotification(
+        newOrder.userId,
+        {
+          title:
+            newOrder.orderStatus ===
+            'confirmed'
+              ? 'Order Confirmed'
+              : 'Order Placed',
 
-    // Orders Collection
-    match /orders/{orderId} {
-      allow read: if (isAuthenticated() && resource.data.userId == request.auth.uid) || isAdmin() || (isAuthenticated() && request.auth.token.email in ['admin@sanubuilds.com', 'anritvox@gmail.com']);
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isAdmin() || (isAuthenticated() && request.auth.token.email in ['admin@sanubuilds.com', 'anritvox@gmail.com']) || (
-        isAuthenticated() && resource.data.userId == request.auth.uid && 
-        // User can only cancel pending order
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['orderStatus', 'updatedAt', 'cancelReason']) &&
-        request.resource.data.orderStatus == 'cancelled' &&
-        resource.data.orderStatus == 'pending'
+          message:
+            `Your order #${newOrder.orderNumber} ` +
+            `for ₹${newOrder.total.toFixed(2)} ` +
+            `has been placed successfully.`,
+
+          type: 'order',
+
+          orderId: newOrder.id,
+        }
+      );
+    } catch (notificationError) {
+      /**
+       * Notification failure should NOT make a
+       * successfully created order appear failed.
+       */
+      console.warn(
+        'Order notification failed:',
+        notificationError
       );
     }
+  }
 
-    // Coupons Collection
-    match /coupons/{couponId} {
-      allow read: if true;
-      allow create, update, delete: if isAdmin() || (isAuthenticated() && request.auth.token.email in ['admin@sanubuilds.com', 'anritvox@gmail.com']);
-    }
+  return newOrder;
+}
 
-    // Reviews Collection
-    match /reviews/{reviewId} {
-      allow read: if true;
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if (isAuthenticated() && resource.data.userId == request.auth.uid) || isAdmin();
-    }
+/* =========================================================
+   GET USER ORDERS
+========================================================= */
 
-    // Settings Collection
-    match /settings/{settingId} {
-      allow read: if true;
-      allow write: if isAdmin() || (isAuthenticated() && request.auth.token.email in ['admin@sanubuilds.com', 'anritvox@gmail.com']);
+export async function getUserOrders(
+  userId: string
+): Promise<Order[]> {
+  try {
+    const q = query(
+      collection(
+        db,
+        ORDERS_COLLECTION
+      ),
+
+      where(
+        'userId',
+        '==',
+        userId
+      ),
+
+      orderBy(
+        'createdAt',
+        'desc'
+      )
+    );
+
+    const snap =
+      await getDocs(q);
+
+    return snap.docs.map(
+      (d) =>
+        ({
+          id: d.id,
+          ...d.data(),
+        } as Order)
+    );
+  } catch (error) {
+    console.error(
+      'Error fetching user orders with orderBy. Trying fallback:',
+      error
+    );
+
+    try {
+      const qFallback =
+        query(
+          collection(
+            db,
+            ORDERS_COLLECTION
+          ),
+
+          where(
+            'userId',
+            '==',
+            userId
+          )
+        );
+
+      const snap =
+        await getDocs(qFallback);
+
+      const orders =
+        snap.docs.map(
+          (d) =>
+            ({
+              id: d.id,
+              ...d.data(),
+            } as Order)
+        );
+
+      return orders.sort(
+        (a, b) =>
+          new Date(
+            b.createdAt
+          ).getTime() -
+          new Date(
+            a.createdAt
+          ).getTime()
+      );
+    } catch (fallbackError) {
+      console.error(
+        'Failed to get user orders:',
+        fallbackError
+      );
+
+      return [];
     }
   }
 }
+
+/* =========================================================
+   GET ORDER BY ID
+========================================================= */
+
+export async function getOrderById(
+  orderId: string
+): Promise<Order | null> {
+  try {
+    const orderRef = doc(
+      db,
+      ORDERS_COLLECTION,
+      orderId
+    );
+
+    const snap =
+      await getDoc(orderRef);
+
+    if (!snap.exists()) {
+      return null;
+    }
+
+    return {
+      id: snap.id,
+      ...snap.data(),
+    } as Order;
+  } catch (error) {
+    console.error(
+      'Error fetching order by id:',
+      error
+    );
+
+    return null;
+  }
+}
+
+/* =========================================================
+   GET ALL ORDERS
+========================================================= */
+
+export async function getAllOrders(): Promise<Order[]> {
+  try {
+    const snap =
+      await getDocs(
+        collection(
+          db,
+          ORDERS_COLLECTION
+        )
+      );
+
+    const orders =
+      snap.docs.map(
+        (d) =>
+          ({
+            id: d.id,
+            ...d.data(),
+          } as Order)
+      );
+
+    return orders.sort(
+      (a, b) =>
+        new Date(
+          b.createdAt
+        ).getTime() -
+        new Date(
+          a.createdAt
+        ).getTime()
+    );
+  } catch (error) {
+    console.error(
+      'Error fetching all orders:',
+      error
+    );
+
+    return [];
+  }
+}
+
+/* =========================================================
+   UPDATE ORDER STATUS
+========================================================= */
+
+export async function updateOrderStatus(
+  orderId: string,
+  newStatus: OrderStatus,
+  note?: string,
+  trackingNumber?: string,
+  carrierName?: string
+): Promise<void> {
+  const orderRef = doc(
+    db,
+    ORDERS_COLLECTION,
+    orderId
+  );
+
+  const snap =
+    await getDoc(orderRef);
+
+  if (!snap.exists()) {
+    throw new Error(
+      'Order not found.'
+    );
+  }
+
+  const currentData =
+    snap.data() as Order;
+
+  const timestamp = now();
+
+  const updatedHistory = [
+    ...(currentData.statusHistory || []),
+
+    {
+      status: newStatus,
+
+      timestamp,
+
+      note:
+        note ||
+        `Status updated to ${newStatus
+          .replace('_', ' ')
+          .toUpperCase()}`,
+    },
+  ];
+
+  const updatePayload: Partial<Order> = {
+    orderStatus: newStatus,
+
+    statusHistory:
+      updatedHistory,
+
+    updatedAt: timestamp,
+  };
+
+  if (trackingNumber) {
+    updatePayload.trackingNumber =
+      trackingNumber;
+  }
+
+  if (carrierName) {
+    updatePayload.carrierName =
+      carrierName;
+  }
+
+  await updateDoc(
+    orderRef,
+    updatePayload
+  );
+
+  /* -------------------------------------------------------
+     CUSTOMER NOTIFICATION
+  ------------------------------------------------------- */
+
+  if (
+    currentData.userId &&
+    currentData.userId !== 'guest'
+  ) {
+    try {
+      const readableStatus =
+        newStatus
+          .replace('_', ' ')
+          .toUpperCase();
+
+      await createUserNotification(
+        currentData.userId,
+        {
+          title:
+            `Order Update: ${readableStatus}`,
+
+          message:
+            `Your order #${currentData.orderNumber} ` +
+            `is now ${readableStatus}.` +
+            `${
+              trackingNumber
+                ? ` Tracking: ${trackingNumber}`
+                : ''
+            }`,
+
+          type: 'order',
+
+          orderId,
+        }
+      );
+    } catch (notificationError) {
+      console.warn(
+        'Order status notification failed:',
+        notificationError
+      );
+    }
+  }
+}
+
+/* =========================================================
+   UPDATE PAYMENT STATUS
+========================================================= */
+
+export async function updatePaymentStatus(
+  orderId: string,
+  paymentStatus: PaymentStatus
+): Promise<void> {
+  const orderRef = doc(
+    db,
+    ORDERS_COLLECTION,
+    orderId
+  );
+
+  await updateDoc(
+    orderRef,
+    {
+      paymentStatus,
+
+      updatedAt: now(),
+    }
+  );
+}
+
+/* =========================================================
+   CANCEL ORDER
+========================================================= */
+
+export async function cancelOrder(
+  orderId: string,
+  reason: string
+): Promise<void> {
+  const orderRef = doc(
+    db,
+    ORDERS_COLLECTION,
+    orderId
+  );
+
+  const snap =
+    await getDoc(orderRef);
+
+  if (!snap.exists()) {
+    throw new Error(
+      'Order not found.'
+    );
+  }
+
+  const order =
+    snap.data() as Order;
+
+  /**
+   * Customer cancellation is intentionally restricted
+   * to pending orders.
+   *
+   * Admin can cancel other statuses through
+   * updateOrderStatus().
+   */
+  if (
+    order.orderStatus !== 'pending'
+  ) {
+    throw new Error(
+      'This order can no longer be cancelled by the customer.'
+    );
+  }
+
+  const timestamp = now();
+
+  const updatedHistory = [
+    ...(order.statusHistory || []),
+
+    {
+      status: 'cancelled' as OrderStatus,
+
+      timestamp,
+
+      note:
+        `Order cancelled by customer. ` +
+        `Reason: ${reason}`,
+    },
+  ];
+
+  await updateDoc(
+    orderRef,
+    {
+      orderStatus:
+        'cancelled',
+
+      cancelReason:
+        reason,
+
+      statusHistory:
+        updatedHistory,
+
+      updatedAt:
+        timestamp,
+    }
+  );
+
+  /* -------------------------------------------------------
+     NOTIFICATION
+  ------------------------------------------------------- */
+
+  if (
+    order.userId &&
+    order.userId !== 'guest'
+  ) {
+    try {
+      await createUserNotification(
+        order.userId,
+        {
+          title:
+            'Order Cancelled',
+
+          message:
+            `Your order #${order.orderNumber} ` +
+            `has been cancelled.`,
+
+          type: 'order',
+
+          orderId,
+        }
+      );
+    } catch (notificationError) {
+      console.warn(
+        'Cancellation notification failed:',
+        notificationError
+      );
+    }
+  }
+}
+
+/* =========================================================
+   ALIAS
+========================================================= */
+
+export const getOrders =
+  getAllOrders;
